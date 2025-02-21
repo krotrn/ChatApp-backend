@@ -1,14 +1,30 @@
-import mongoose from "mongoose";
+import { Document, Types } from "mongoose";
 
-export interface MessageAttachmentType {
+export interface AttachmentType {
   url: string;
   localPath: string;
 }
 
-export interface MessageType
-  extends mongoose.Document<mongoose.Types.ObjectId> {
-  sender: mongoose.Types.ObjectId;
-  chat: mongoose.Types.ObjectId;
+export enum StatusEnum {
+  "sent",
+  "delivered",
+  "read",
+}
+
+export interface ReactionType {
+  userId: string;
+  emoji: string;
+}
+
+export interface ChatType extends Document {
+  sender: string;
+  receiver: string;
+  chat: Types.ObjectId;
   content: string;
-  attachments: MessageAttachmentType[];
+  attachments: [AttachmentType];
+  status: StatusEnum;
+  reactions: [ReactionType];
+  edited: { isEdited: boolean; editedAt: Date; previousContent: [string]; };
+  isDeleted: boolean;
+  replyTo: Types.ObjectId;
 }

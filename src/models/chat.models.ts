@@ -1,6 +1,7 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Model, Schema } from "mongoose";
+import { ChatType } from "../types/Chat.type";
 
-const chatSchema = new Schema(
+const chatSchema = new Schema<ChatType>(
   {
     name: {
       type: String,
@@ -29,7 +30,7 @@ const chatSchema = new Schema(
     },
     deletedFor: [
       {
-        user: { type: String },
+        user: String,
         deletedAt: Date,
       },
     ],
@@ -50,4 +51,5 @@ const chatSchema = new Schema(
 
 chatSchema.index({ participants: 1, updatedAt: -1 });
 
-export const Chat = mongoose.models.Chat || mongoose.model("Chat", chatSchema);
+export const Chat: Model<ChatType> =
+  mongoose.models.Chat || mongoose.model<ChatType>("Chat", chatSchema);
