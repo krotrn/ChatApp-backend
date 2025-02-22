@@ -16,7 +16,7 @@ export interface ReactionType {
   emoji: string;
 }
 
-export interface ChatType extends Document {
+export interface MessageType extends Document {
   sender: string;
   receiver: string;
   chat: Types.ObjectId;

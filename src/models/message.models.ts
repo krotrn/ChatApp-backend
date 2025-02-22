@@ -1,9 +1,9 @@
 
 import mongoose, { Schema } from "mongoose";
-import { StatusEnum } from "../types/chat.types";
-import { ChatType } from "../types/chat.types";
+import { MessageType, StatusEnum } from "../types/Message.type";
 
-const chatMessageSchema = new Schema<ChatType>(
+
+const chatMessageSchema = new Schema<MessageType>(
   {
     sender: {
       type: String,
