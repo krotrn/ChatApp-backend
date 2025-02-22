@@ -1,5 +1,5 @@
 
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Model, Schema } from "mongoose";
 import { MessageType, StatusEnum } from "../types/Message.type";
 
 
@@ -64,6 +64,6 @@ const chatMessageSchema = new Schema<MessageType>(
 
 chatMessageSchema.index({ chat: 1, createdAt: -1 });
 
-export const ChatMessage =
+export const ChatMessage:Model<MessageType> =
   mongoose.models.ChatMessage ||
-  mongoose.model("ChatMessage", chatMessageSchema);
+  mongoose.model<MessageType>("ChatMessage", chatMessageSchema);
