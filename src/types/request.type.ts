@@ -2,7 +2,7 @@ import { Request } from "express";
 import { ParamsDictionary } from "express-serve-static-core";
 import { ParsedQs } from "qs";
 
-// Generic interface for authenticated requests
+// Base authenticated request
 export interface AuthenticatedRequest<
   TBody = unknown,
   TParams extends ParamsDictionary = ParamsDictionary,
@@ -13,22 +13,11 @@ export interface AuthenticatedRequest<
   };
 }
 
-// Use type aliases for endpoint-specific requests
+// For endpoints that expect a structured body (e.g., JSON data)
 export type CreateChatRequest = AuthenticatedRequest<{
   name?: string;
   participants: string[];
   admin?: string;
   type: "direct" | "group" | "channel";
   createdBy: string;
-}>;
-
-export type SendMessageRequest = AuthenticatedRequest<{
-  sender: string;
-  receiver: string;
-  chat: string;
-  content: string;
-  attachments?: Array<{
-    url: string;
-    localPath: string;
-  }>;
 }>;

@@ -10,11 +10,13 @@ const chatMessageSchema = new Schema<MessageType>(
       required: true,
       index: true,
     },
-    receiver: {
-      type: String,
-      required: true,
-      index: true,
-    },
+    receivers: [
+      {
+        type: String,
+        required: true,
+        index: true,
+      }
+    ],
     chat: {
       type: Schema.Types.ObjectId,
       ref: "Chat",
@@ -34,11 +36,11 @@ const chatMessageSchema = new Schema<MessageType>(
         },
       ],
       default: [],
-    status: {
-      type: String,
-      enum: Object.values(StatusEnum),
-      default: StatusEnum.sent,
-    },
+      status: {
+        type: String,
+        enum: Object.values(StatusEnum),
+        default: StatusEnum.sent,
+      },
     },
     reactions: [
       {

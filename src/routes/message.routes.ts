@@ -1,6 +1,5 @@
 // src/routes/messageRoutes.ts
 import { Router } from "express";
-import verifyApiKey from "../middleware/auth.middleware";
 import { upload } from "../middleware/multer.middleware";
 
 // Import your message controllers
@@ -8,14 +7,15 @@ import {
   getAllMessages,
   sendMessage,
   deleteMessage,
+  updateReaction,
+  replyMessage,
 } from "../controllers/message.controllers";
+import authenticate from "../middleware/auth.middleware";
 
 // Create a router instance and apply API key verification
 const router = Router();
 // Apply API key verification for all chat routes
-router.use((req, res, next) => {
-  verifyApiKey(req, res, next);
-});
+router.use(authenticate);
 
 /**
  * GET /api/v1/chat-app/messages/:chatId
@@ -37,4 +37,6 @@ router
  */
 router.route("/:chatId/:messageId").delete(deleteMessage);
 
+router.post("/messages/:messageId/reaction", updateReaction);
+router.post("/chats/:chatId/reply/:messageId", replyMessage);
 export default router;

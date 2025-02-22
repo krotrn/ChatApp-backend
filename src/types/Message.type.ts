@@ -18,7 +18,7 @@ export interface ReactionType {
 
 export interface MessageType extends Document {
   sender: string;
-  receiver: string;
+  receivers: [string];
   chat: Types.ObjectId;
   content: string;
   attachments: [AttachmentType];
