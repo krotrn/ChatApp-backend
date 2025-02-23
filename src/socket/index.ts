@@ -1,9 +1,9 @@
-import cookie from "cookie";
 import jwt from "jsonwebtoken";
 import { Server, Socket } from "socket.io";
 import { ChatEventEnum } from "../utils/constants";
-import ApiError from "../utils/ApiError.js";
+import ApiError from "../utils/ApiError";
 import { CustomSocket } from "../types/Socket.type";
+import axios from "axios";
 
 const mountJoinChatEvent = (socket: Socket) => {
   socket.on(ChatEventEnum.JOIN_CHAT_EVENT, (chatId: string) => {
@@ -27,8 +27,21 @@ const mountParticipantStoppedTypingEvent = (socket: Socket) => {
 const initializeSocketIO = (io: Server) => {
   return io.on("connection", async (socket: CustomSocket) => {
     try {
-      const cookies = cookie.parse(socket.handshake.headers?.cookie || "");
-      const token = cookies?.accessToken || socket.handshake.auth?.token;
+      const token = socket.handshake.auth.token;
+      const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!) as {
+        id: string;
+      };
+
+      // Verify user exists in Repo1
+      const user = await axios.get(
+        `${process.env.REPO1_API_URL}/users/${decoded.id}`
+      );
+
+      socket.user = {
+        _id: user.data.id,
+        username: user.data.username,
+        avatarUrl: user.data.avatarUrl,
+      };
 
       if (!token) {
         throw new ApiError(401, "Unauthorized handshake. Token is missing");
@@ -83,4 +96,3 @@ const emitSocketEvent = (
 };
 
 export { initializeSocketIO, emitSocketEvent };
-

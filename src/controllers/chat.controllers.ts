@@ -1,5 +1,4 @@
 import { PipelineStage, Types } from "mongoose";
-import "../types/express";
 import { ChatMessage } from "../models/message.models";
 import { removeLocalFile } from "../utils/FileOperations";
 import { Request, Response } from "express";
@@ -11,6 +10,8 @@ import { AuthenticatedRequest, CreateChatRequest } from "../types/request.type";
 import { emitSocketEvent } from "../socket";
 import { ChatEventEnum } from "../utils/constants";
 import { AttachmentType, MessageType } from "../types/Message.type";
+import redisClient from "../utils/redisClient";
+import { validateUser } from "../utils/userHelper";
 
 /**
  * Generates a common aggregation pipeline for chat-related queries.
@@ -94,11 +95,14 @@ const createOrGetAOneOnOneChat = async (
   const { participants, name } = (req as CreateChatRequest).body;
 
   if (participants.length !== 1) {
-    throw new ApiError(400, "Invalid participants.");
+    throw new ApiError(400, "Invalid no of participants.");
   }
 
   if (participants[0] === (req as AuthenticatedRequest).user._id) {
     throw new ApiError(400, "You cannot chat with yourself");
+  }
+  if (await validateUser(participants[0])) {
+    throw new ApiError(403, "Invalid User.");
   }
 
   const chat = await Chat.aggregate([
@@ -181,6 +185,15 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
       "Seems like you have passed duplicate participants."
     );
   }
+
+  await Promise.all(
+    participants.map(async (userId: string) => {
+      if (!(await validateUser(userId))) {
+        throw new ApiError(400, `User ${userId} not found`);
+      }
+    })
+  );
+
 
   const groupChat: ChatType = await Chat.create({
     name,
@@ -648,6 +661,23 @@ const removeParticipantFromGroupChat = async (
  * @returns {Promise<void>} A JSON response containing the status code, the list of chats, and a success message.
  */
 const getAllChats = async (req: Request, res: Response): Promise<void> => {
+  const userId = (req as AuthenticatedRequest).user._id;
+  const cacheKey = `chats:${userId}`;
+
+  const cachedChats = await redisClient.get(cacheKey);
+  if (cachedChats) {
+    res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          JSON.parse(cachedChats),
+          "User chats fetched from cache"
+        )
+      );
+    return;
+  }
+
   const chats = await Chat.aggregate([
     {
       $match: {
@@ -663,6 +693,8 @@ const getAllChats = async (req: Request, res: Response): Promise<void> => {
     },
     ...chatCommonAggregation(),
   ]);
+
+  await redisClient.set(cacheKey, JSON.stringify(chats), { EX: 60 });
 
   res
     .status(200)

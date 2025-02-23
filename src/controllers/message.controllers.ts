@@ -2,9 +2,7 @@ import { Request, Response } from "express";
 import { PipelineStage, Types } from "mongoose";
 import { Chat } from "../models/chat.models";
 import ApiError from "../utils/ApiError";
-import {
-  AuthenticatedRequest,
-} from "../types/request.type";
+import { AuthenticatedRequest } from "../types/request.type";
 import { AttachmentType, MessageType } from "../types/Message.type";
 import { ChatMessage } from "../models/message.models";
 import { ApiResponse } from "../utils/ApiResponse";
@@ -16,6 +14,8 @@ import {
 import { emitSocketEvent } from "../socket";
 import { ChatEventEnum } from "../utils/constants";
 import { ChatType } from "../types/Chat.type";
+import redisClient from "../utils/redisClient";
+import { validateUser } from "../utils/userHelper";
 
 /**
  * Returns an aggregation pipeline stage array that projects the common fields for a chat message.
@@ -75,6 +75,22 @@ const chatMessageCommonAggregation = (): PipelineStage[] => {
  */
 const getAllMessages = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
+  const cacheKey = `messages:${chatId}`;
+
+  const cachedData = await redisClient.get(cacheKey);
+  if (cachedData) {
+    res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          JSON.parse(cachedData),
+          "Messages fetched from cache"
+        )
+      );
+    return;
+  }
+
   const selectedChat = await Chat.findById(chatId);
   if (!selectedChat) {
     throw new ApiError(404, "Chat doesnot exist.");
@@ -99,6 +115,8 @@ const getAllMessages = async (req: Request, res: Response): Promise<void> => {
       },
     },
   ]);
+
+  await redisClient.set(cacheKey, JSON.stringify(messages), { EX: 60 });
 
   res
     .status(200)
@@ -151,11 +169,20 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
   }
 
   const receivers = selectedChat.participants.filter(
-    (participant: string) => participant !== (req as AuthenticatedRequest).user._id
+    (participant: string) =>
+      participant !== (req as AuthenticatedRequest).user._id
   );
   if (!receivers) {
     throw new ApiError(400, "Unable to determine message receiver");
   }
+
+  await Promise.all(
+    receivers.map(async (userId: string) => {
+      if (!(await validateUser(userId))) {
+        throw new ApiError(400, `User ${userId} not found`);
+      }
+    })
+  );
 
   let attachments: Express.Multer.File[] = [];
   if (!Array.isArray(req.files) && req.files?.attachments) {
@@ -201,6 +228,9 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
       receivedMessage
     );
   });
+
+  await redisClient.del(`messages:${chatId}`);
+
   res
     .status(201)
     .json(new ApiResponse(201, receivedMessage, "Message saved successfully"));
@@ -280,11 +310,12 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
     );
   });
 
+  await redisClient.del(`messages:${chatId}`);
+
   res
     .status(200)
     .json(new ApiResponse(200, message, "Message deleted successfully"));
 };
-
 
 /**
  * Handles replying to a specific message in a chat.
@@ -344,25 +375,26 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
     );
   });
 
+  await redisClient.del(`messages:${chatId}`);
+
   res.status(201).json(new ApiResponse(201, reply, "Reply sent successfully"));
 };
 
-
 /**
  * Updates the reaction of a user to a specific message.
- * 
- * This function handles the addition, update, or removal of a reaction (emoji) 
- * to a chat message. If the user has already reacted with the same emoji, 
- * the reaction is removed. If the user has reacted with a different emoji, 
+ *
+ * This function handles the addition, update, or removal of a reaction (emoji)
+ * to a chat message. If the user has already reacted with the same emoji,
+ * the reaction is removed. If the user has reacted with a different emoji,
  * the reaction is updated. If the user has not reacted yet, a new reaction is added.
- * 
- * @param req - The request object containing the message ID in the URL parameters 
+ *
+ * @param req - The request object containing the message ID in the URL parameters
  *              and the emoji in the request body.
  * @param res - The response object used to send back the updated message.
- * 
+ *
  * @throws {ApiError} If the emoji is not provided in the request body.
  * @throws {ApiError} If the message with the given ID is not found.
- * 
+ *
  * @returns {Promise<void>} A promise that resolves when the reaction is successfully updated.
  */
 const updateReaction = async (req: Request, res: Response): Promise<void> => {
@@ -389,12 +421,22 @@ const updateReaction = async (req: Request, res: Response): Promise<void> => {
       message.reactions[reactionIndex].emoji = emoji;
     }
   } else {
-    message.reactions.push({ userId: (req as AuthenticatedRequest).user._id, emoji });
+    message.reactions.push({
+      userId: (req as AuthenticatedRequest).user._id,
+      emoji,
+    });
   }
 
   await message.save();
-  res.status(200).json(new ApiResponse(200, message, "Reaction updated successfully"));
+  res
+    .status(200)
+    .json(new ApiResponse(200, message, "Reaction updated successfully"));
 };
 
-
-export { getAllMessages, sendMessage, deleteMessage, replyMessage, updateReaction };
+export {
+  getAllMessages,
+  sendMessage,
+  deleteMessage,
+  replyMessage,
+  updateReaction,
+};

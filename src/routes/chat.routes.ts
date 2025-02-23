@@ -13,8 +13,7 @@ import {
   pinMessage,
   unpinMessage,
 } from "../controllers/chat.controllers";
-import authenticate from "../middleware/auth.middleware";
-import "../types/express";
+import authenticate from "../middleware/auth.middleware"
 
 /**
  * Sets up chat-related routes for the Express application.
