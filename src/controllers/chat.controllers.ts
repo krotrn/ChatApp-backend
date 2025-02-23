@@ -1,4 +1,4 @@
-import { PipelineStage, Types } from "mongoose";
+import { PipelineStage, startSession, Types } from "mongoose";
 import { ChatMessage } from "../models/message.models";
 import { removeLocalFile } from "../utils/FileOperations";
 import { Request, Response } from "express";
@@ -98,10 +98,10 @@ const createOrGetAOneOnOneChat = async (
     throw new ApiError(400, "Invalid no of participants.");
   }
 
-  if (participants[0] === (req as AuthenticatedRequest).user._id) {
+  if (participants[0].userId === (req as AuthenticatedRequest).user._id) {
     throw new ApiError(400, "You cannot chat with yourself");
   }
-  if (await validateUser(participants[0])) {
+  if (await validateUser(participants[0].userId)) {
     throw new ApiError(403, "Invalid User.");
   }
 
@@ -146,8 +146,13 @@ const createOrGetAOneOnOneChat = async (
   }
 
   payload.participants.forEach((participant) => {
-    if (participant === (req as AuthenticatedRequest).user._id) return;
-    emitSocketEvent(req, participant, ChatEventEnum.NEW_CHAT_EVENT, payload);
+    if (participant.userId === (req as AuthenticatedRequest).user._id) return;
+    emitSocketEvent(
+      req,
+      participant.userId,
+      ChatEventEnum.NEW_CHAT_EVENT,
+      payload
+    );
   });
 
   res
@@ -168,7 +173,12 @@ const createOrGetAOneOnOneChat = async (
  */
 const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { name, participants } = (req as CreateChatRequest).body;
-  if (participants.includes((req as AuthenticatedRequest).user._id)) {
+  if (
+    participants.some(
+      (participant) =>
+        participant.userId === (req as AuthenticatedRequest).user._id
+    )
+  ) {
     throw new ApiError(
       400,
       "Participants array should not contain the group creator"
@@ -187,13 +197,12 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   }
 
   await Promise.all(
-    participants.map(async (userId: string) => {
-      if (!(await validateUser(userId))) {
-        throw new ApiError(400, `User ${userId} not found`);
+    participants.map(async (user) => {
+      if (!(await validateUser(user.userId))) {
+        throw new ApiError(400, `User ${user.userId} not found`);
       }
     })
   );
-
 
   const groupChat: ChatType = await Chat.create({
     name,
@@ -219,8 +228,13 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   }
 
   payload?.participants?.forEach((participant) => {
-    if (participant === (req as AuthenticatedRequest).user._id) return;
-    emitSocketEvent(req, participant, ChatEventEnum.NEW_CHAT_EVENT, payload);
+    if (participant.userId === (req as AuthenticatedRequest).user._id) return;
+    emitSocketEvent(
+      req,
+      participant.userId,
+      ChatEventEnum.NEW_CHAT_EVENT,
+      payload
+    );
   });
 
   res
@@ -315,7 +329,7 @@ const renameGroupChat = async (req: Request, res: Response): Promise<void> => {
   payload?.participants?.forEach((participant) => {
     emitSocketEvent(
       req,
-      participant,
+      participant.userId,
       ChatEventEnum.UPDATE_GROUP_NAME_EVENT,
       payload
     );
@@ -360,13 +374,28 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
     throw new ApiError(403, "Only admin can delete the group");
   }
 
-  await Chat.findByIdAndDelete(chatId);
-
-  await deleteCascadeChatMessages(chatId);
+  const session = await startSession();
+  try {
+    session.startTransaction();
+    await Chat.findByIdAndDelete(chatId).session(session);
+    await ChatMessage.deleteMany({ chat: chatId }).session(session);
+    await session.commitTransaction();
+  } catch (error) {
+    console.log(error);
+    await session.abortTransaction();
+    throw new ApiError(500, "Failed to delete chat");
+  } finally {
+    session.endSession();
+  }
 
   chat?.participants?.forEach((participant) => {
-    if (participant === (req as AuthenticatedRequest).user._id) return;
-    emitSocketEvent(req, participant, ChatEventEnum.LEAVE_CHAT_EVENT, chat);
+    if (participant.userId === (req as AuthenticatedRequest).user._id) return;
+    emitSocketEvent(
+      req,
+      participant.userId,
+      ChatEventEnum.LEAVE_CHAT_EVENT,
+      chat
+    );
   });
 
   res
@@ -401,7 +430,12 @@ const leaveGroupChat = async (req: Request, res: Response): Promise<void> => {
 
   const existingParticipants = groupChat.participants;
 
-  if (!existingParticipants?.includes((req as CreateChatRequest).user?._id)) {
+  if (
+    !existingParticipants?.some(
+      (participant) =>
+        participant.userId === (req as CreateChatRequest).user?._id
+    )
+  ) {
     throw new ApiError(400, "You are not a part of this group chat");
   }
 
@@ -483,7 +517,7 @@ const deleteOneOnOneChat = async (
 
   const otherParticipant = payload?.participants?.find(
     (participant) =>
-      participant !== (req as AuthenticatedRequest).user._id.toString()
+      participant.userId !== (req as AuthenticatedRequest).user._id.toString()
   );
 
   if (!otherParticipant) {
@@ -491,7 +525,7 @@ const deleteOneOnOneChat = async (
   }
   emitSocketEvent(
     req,
-    otherParticipant,
+    otherParticipant.userId,
     ChatEventEnum.LEAVE_CHAT_EVENT,
     payload
   );
@@ -533,7 +567,11 @@ const addNewParticipantInGroupChat = async (
 
   const existingParticipants = groupChat.participants;
 
-  if (existingParticipants?.includes(participantId)) {
+  if (
+    existingParticipants?.some(
+      (participant) => participant.userId === participantId
+    )
+  ) {
     throw new ApiError(409, "Participant already in a group chat");
   }
 
@@ -606,7 +644,11 @@ const removeParticipantFromGroupChat = async (
 
   const existingParticipants = groupChat.participants;
 
-  if (!existingParticipants?.includes(participantId)) {
+  if (
+    !existingParticipants?.some(
+      (participant) => participant.userId === participantId
+    )
+  ) {
     throw new ApiError(400, "Participant does not exist in the group chat");
   }
 

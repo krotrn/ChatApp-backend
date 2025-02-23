@@ -1,8 +1,8 @@
 import jwt from "jsonwebtoken";
 import { Server, Socket } from "socket.io";
 import { ChatEventEnum } from "../utils/constants";
-import ApiError from "../utils/ApiError";
 import { CustomSocket } from "../types/Socket.type";
+import redisClient from "../utils/redisClient";
 import axios from "axios";
 
 const mountJoinChatEvent = (socket: Socket) => {
@@ -25,27 +25,31 @@ const mountParticipantStoppedTypingEvent = (socket: Socket) => {
 };
 
 const initializeSocketIO = (io: Server) => {
+  const REPO1_API_URL = process.env.REPO1;
+  io.use(async (socket: CustomSocket, next) => {
+    try {
+      const token = socket.handshake.auth.token;
+      const { data: user } = await axios.post(
+        `${REPO1_API_URL}/auth/verify-token`,
+        { token }
+      );
+
+      if (!user) return next(new Error("Unauthorized"));
+      if (await redisClient.exists(`conn:${user.id}`)) {
+        return next(new Error("Duplicate connection"));
+      }
+
+      socket.user = user;
+      await redisClient.set(`conn:${user.id}`, "1", { EX: 10 });
+      next();
+    } catch (error) {
+      console.log(error);
+      next(new Error("Authentication failed"));
+    }
+  });
   return io.on("connection", async (socket: CustomSocket) => {
     try {
       const token = socket.handshake.auth.token;
-      const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!) as {
-        id: string;
-      };
-
-      // Verify user exists in Repo1
-      const user = await axios.get(
-        `${process.env.REPO1_API_URL}/users/${decoded.id}`
-      );
-
-      socket.user = {
-        _id: user.data.id,
-        username: user.data.username,
-        avatarUrl: user.data.avatarUrl,
-      };
-
-      if (!token) {
-        throw new ApiError(401, "Unauthorized handshake. Token is missing");
-      }
 
       const decodeToken = jwt.verify(
         token,

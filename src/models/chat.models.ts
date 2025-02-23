@@ -10,12 +10,11 @@ const chatSchema = new Schema<ChatType>(
       type: Schema.Types.ObjectId,
       ref: "ChatMessage",
     },
-    participants: [
-      {
-        type: String,
-        required: true,
-      },
-    ],
+    participants: [{
+      userId: { type: String, required: true },
+      role: { type: String, enum: ["member", "admin"], default: "member" },
+      joinedAt: { type: Date, default: Date.now }
+    }],  
     admin: {
       type: String,
     },
