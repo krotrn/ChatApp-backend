@@ -10,11 +10,13 @@ const chatSchema = new Schema<ChatType>(
       type: Schema.Types.ObjectId,
       ref: "ChatMessage",
     },
-    participants: [{
-      userId: { type: String, required: true },
-      role: { type: String, enum: ["member", "admin"], default: "member" },
-      joinedAt: { type: Date, default: Date.now }
-    }],  
+    participants: [
+      {
+        userId: { type: String, required: true },
+        role: { type: String, enum: ["member", "admin"], default: "member" },
+        joinedAt: { type: Date, default: Date.now },
+      },
+    ],
     admin: {
       type: String,
     },
@@ -27,12 +29,15 @@ const chatSchema = new Schema<ChatType>(
       type: String,
       required: true,
     },
-    deletedFor: [
-      {
-        user: String,
-        deletedAt: Date,
-      },
-    ],
+    deletedFor: {
+      type: [
+        {
+          user: String,
+          deletedAt: Date,
+        },
+      ],
+      default: [],
+    },
     metadata: {
       pinnedMessage: [
         {

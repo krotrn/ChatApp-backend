@@ -19,15 +19,27 @@ import { AuthenticatedRequest } from "../types/request.type";
  *
  * @throws {ApiError} If token verification fails, an ApiError with a 401 status is thrown.
  */
-const authenticate: RequestHandler = (req:Request, _res:Response, next:NextFunction) => {
-  const token = req.cookies.accessToken || req.headers.authorization?.split(' ')[1];
-  
+const authenticate: RequestHandler = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+) => {
+  const token =
+    req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
+
   try {
-    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!) as { id: string };
-    (req as AuthenticatedRequest).user = { _id: decoded.id };
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!) as {
+      id: string;
+      name: string;
+      avatarUrl: string;
+      email: string;
+      username: string;
+      role: string;
+    };
+    (req as AuthenticatedRequest).user = decoded;
     next();
   } catch (error) {
-    console.log(error)
+    console.log(error);
     next(new ApiError(401, "Invalid or expired token"));
   }
 };

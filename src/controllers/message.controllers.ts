@@ -3,7 +3,7 @@ import { PipelineStage, Types } from "mongoose";
 import { Chat } from "../models/chat.models";
 import ApiError from "../utils/ApiError";
 import { AuthenticatedRequest } from "../types/request.type";
-import { AttachmentType, MessageType } from "../types/Message.type";
+import { AttachmentType, MessageType } from "../types/message.type";
 import { ChatMessage } from "../models/message.models";
 import { ApiResponse } from "../utils/ApiResponse";
 import {
@@ -16,6 +16,7 @@ import { ChatEventEnum } from "../utils/constants";
 import { ChatType } from "../types/Chat.type";
 import redisClient from "../utils/redisClient";
 import { validateUser } from "../utils/userHelper";
+import { resilientApiCall } from "../utils/apiRetry";
 
 /**
  * Returns an aggregation pipeline stage array that projects the common fields for a chat message.
@@ -97,7 +98,10 @@ const getAllMessages = async (req: Request, res: Response): Promise<void> => {
   }
 
   if (
-    !selectedChat.participants.includes((req as AuthenticatedRequest).user._id)
+    !selectedChat.participants.some(
+      (participant) =>
+        participant.userId === (req as AuthenticatedRequest).user.id
+    )
   ) {
     throw new ApiError(400, "User is not part of chat.");
   }
@@ -169,17 +173,17 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
   }
 
   const receivers = selectedChat.participants.filter(
-    (participant: string) =>
-      participant !== (req as AuthenticatedRequest).user._id
+    (participant) =>
+      participant.userId !== (req as AuthenticatedRequest).user.id
   );
   if (!receivers) {
     throw new ApiError(400, "Unable to determine message receiver");
   }
 
   await Promise.all(
-    receivers.map(async (userId: string) => {
-      if (!(await validateUser(userId))) {
-        throw new ApiError(400, `User ${userId} not found`);
+    receivers.map(async (user) => {
+      if (!(await resilientApiCall(() => validateUser(user.userId)))) {
+        throw new ApiError(400, `User ${user.userId} not found`);
       }
     })
   );
@@ -196,7 +200,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
   }));
 
   const messgage: MessageType = await ChatMessage.create({
-    sender: (req as AuthenticatedRequest).user._id,
+    sender: (req as AuthenticatedRequest).user.id,
     receivers,
     content: content || "",
     chat: new Types.ObjectId(chatId),
@@ -215,21 +219,33 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
 
   const receivedMessage = messages[0];
 
-  if (!receivedMessage) {
+  if (!receivedMessage || !updateChat) {
     throw new ApiError(500, "Internal server error");
   }
 
-  updateChat?.participants.forEach((participant) => {
-    if (participant === (req as AuthenticatedRequest).user._id) return;
+  if (updateChat.type === "group") {
     emitSocketEvent(
       req,
-      participant,
+      chatId,
       ChatEventEnum.MESSAGE_RECEIVED_EVENT,
       receivedMessage
     );
-  });
+  } else {
+    updateChat?.participants.forEach((participant) => {
+      if (participant.userId === (req as AuthenticatedRequest).user.id) return;
+      emitSocketEvent(
+        req,
+        participant.userId,
+        ChatEventEnum.MESSAGE_RECEIVED_EVENT,
+        receivedMessage
+      );
+    });
+  }
 
   await redisClient.del(`messages:${chatId}`);
+  updateChat?.participants.forEach(async (participant) => {
+    await redisClient.del(`chats:${participant}`);
+  });
 
   res
     .status(201)
@@ -265,7 +281,10 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
   });
   if (
     !chat ||
-    !chat.participants.includes((req as AuthenticatedRequest).user._id)
+    !chat.participants.some(
+      (participant) =>
+        participant.userId === (req as AuthenticatedRequest).user.id
+    )
   ) {
     throw new ApiError(404, "Chat does not exist");
   }
@@ -275,7 +294,7 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
     throw new ApiError(404, "Message does not exist");
   }
 
-  if (message.sender !== (req as AuthenticatedRequest).user._id) {
+  if (message.sender !== (req as AuthenticatedRequest).user.id) {
     throw new ApiError(403, "You are not authorised to delete this message");
   }
 
@@ -301,10 +320,10 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
   }
 
   chat.participants.forEach((participant) => {
-    if (participant === (req as AuthenticatedRequest).user._id) return;
+    if (participant.userId === (req as AuthenticatedRequest).user.id) return;
     emitSocketEvent(
       req,
-      participant,
+      participant.userId,
       ChatEventEnum.MESSAGE_DELETE_EVENT,
       message
     );
@@ -346,15 +365,15 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
   }
 
   const receivers = chat.participants.filter(
-    (participant: string) =>
-      participant !== (req as AuthenticatedRequest).user._id
+    (participant) =>
+      participant.userId !== (req as AuthenticatedRequest).user.id
   );
   if (!receivers) {
     throw new ApiError(400, "Unable to determine message receiver");
   }
 
   const reply = await ChatMessage.create({
-    sender: (req as AuthenticatedRequest).user._id,
+    sender: (req as AuthenticatedRequest).user.id,
     receivers,
     content: content,
     chat: new Types.ObjectId(chatId),
@@ -365,11 +384,11 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
   chat.lastMessage = reply._id as Types.ObjectId;
   await chat.save();
 
-  chat.participants.forEach((participant: string) => {
-    if (participant === (req as AuthenticatedRequest).user._id) return;
+  chat.participants.forEach((participant) => {
+    if (participant.userId === (req as AuthenticatedRequest).user.id) return;
     emitSocketEvent(
       req,
-      participant,
+      participant.userId,
       ChatEventEnum.MESSAGE_RECEIVED_EVENT,
       reply
     );
@@ -411,7 +430,7 @@ const updateReaction = async (req: Request, res: Response): Promise<void> => {
   }
 
   const reactionIndex = message.reactions.findIndex(
-    (reaction) => reaction.userId === (req as AuthenticatedRequest).user._id
+    (reaction) => reaction.userId === (req as AuthenticatedRequest).user.id
   );
 
   if (reactionIndex !== -1) {
@@ -422,7 +441,7 @@ const updateReaction = async (req: Request, res: Response): Promise<void> => {
     }
   } else {
     message.reactions.push({
-      userId: (req as AuthenticatedRequest).user._id,
+      userId: (req as AuthenticatedRequest).user.id,
       emoji,
     });
   }

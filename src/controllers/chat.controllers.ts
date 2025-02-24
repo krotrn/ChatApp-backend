@@ -9,9 +9,10 @@ import { ChatType } from "../types/Chat.type";
 import { AuthenticatedRequest, CreateChatRequest } from "../types/request.type";
 import { emitSocketEvent } from "../socket";
 import { ChatEventEnum } from "../utils/constants";
-import { AttachmentType, MessageType } from "../types/Message.type";
+import { AttachmentType, MessageType } from "../types/message.type";
 import redisClient from "../utils/redisClient";
 import { validateUser } from "../utils/userHelper";
+import { resilientApiCall } from "../utils/apiRetry";
 
 /**
  * Generates a common aggregation pipeline for chat-related queries.
@@ -98,10 +99,10 @@ const createOrGetAOneOnOneChat = async (
     throw new ApiError(400, "Invalid no of participants.");
   }
 
-  if (participants[0].userId === (req as AuthenticatedRequest).user._id) {
+  if (participants[0].userId === (req as AuthenticatedRequest).user.id) {
     throw new ApiError(400, "You cannot chat with yourself");
   }
-  if (await validateUser(participants[0].userId)) {
+  if (!(await resilientApiCall(() => validateUser(participants[0].userId)))) {
     throw new ApiError(403, "Invalid User.");
   }
 
@@ -112,7 +113,7 @@ const createOrGetAOneOnOneChat = async (
         $and: [
           {
             participants: {
-              $elemMatch: { $eq: (req as AuthenticatedRequest).user._id },
+              $elemMatch: { $eq: (req as AuthenticatedRequest).user.id },
             },
           },
           { participants: { $elemMatch: { $eq: participants[0] } } },
@@ -131,9 +132,9 @@ const createOrGetAOneOnOneChat = async (
 
   const newChatInstance = await Chat.create({
     name,
-    participants: [(req as AuthenticatedRequest).user._id, participants[0]],
-    admin: (req as AuthenticatedRequest).user._id,
-    createdBy: (req as AuthenticatedRequest).user._id,
+    participants: [(req as AuthenticatedRequest).user.id, participants[0]],
+    admin: (req as AuthenticatedRequest).user.id,
+    createdBy: (req as AuthenticatedRequest).user.id,
   });
   const createChat = await Chat.aggregate([
     { $match: { _id: newChatInstance._id } },
@@ -145,8 +146,9 @@ const createOrGetAOneOnOneChat = async (
     throw new ApiError(500, "Internal Server error");
   }
 
-  payload.participants.forEach((participant) => {
-    if (participant.userId === (req as AuthenticatedRequest).user._id) return;
+  payload.participants.forEach(async (participant) => {
+    await redisClient.del(`chats:${participant.userId}`);
+    if (participant.userId === (req as AuthenticatedRequest).user.id) return;
     emitSocketEvent(
       req,
       participant.userId,
@@ -176,7 +178,7 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   if (
     participants.some(
       (participant) =>
-        participant.userId === (req as AuthenticatedRequest).user._id
+        participant.userId === (req as AuthenticatedRequest).user.id
     )
   ) {
     throw new ApiError(
@@ -186,7 +188,7 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   }
 
   const member = [
-    ...new Set([...participants, (req as AuthenticatedRequest).user._id]),
+    ...new Set([...participants, (req as AuthenticatedRequest).user.id]),
   ];
 
   if (member.length < 3) {
@@ -198,7 +200,7 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
 
   await Promise.all(
     participants.map(async (user) => {
-      if (!(await validateUser(user.userId))) {
+      if (!(await resilientApiCall(() => validateUser(user.userId)))) {
         throw new ApiError(400, `User ${user.userId} not found`);
       }
     })
@@ -208,8 +210,8 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
     name,
     type: "group",
     participants: member,
-    admin: (req as AuthenticatedRequest).user._id,
-    createdBy: (req as AuthenticatedRequest).user._id,
+    admin: (req as AuthenticatedRequest).user.id,
+    createdBy: (req as AuthenticatedRequest).user.id,
   });
 
   const chat = await Chat.aggregate([
@@ -227,8 +229,9 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
     throw new ApiError(500, "Internal server error");
   }
 
-  payload?.participants?.forEach((participant) => {
-    if (participant.userId === (req as AuthenticatedRequest).user._id) return;
+  payload.participants.forEach(async (participant) => {
+    await redisClient.del(`chats:${participant.userId}`);
+    if (participant.userId === (req as AuthenticatedRequest).user.id) return;
     emitSocketEvent(
       req,
       participant.userId,
@@ -256,6 +259,21 @@ const getGroupChatDetails = async (
   res: Response
 ): Promise<void> => {
   const { chatId } = req.params;
+  const cacheKey = `group:${chatId}`;
+
+  const cachedChats = await redisClient.get(cacheKey);
+  if (cachedChats) {
+    res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          JSON.parse(cachedChats),
+          "User chats fetched from cache"
+        )
+      );
+    return;
+  }
   const groupChat = await Chat.aggregate([
     {
       $match: {
@@ -270,6 +288,7 @@ const getGroupChatDetails = async (
   if (!chat) {
     throw new ApiError(404, "Group chat does not exist");
   }
+  await redisClient.set(cacheKey, JSON.stringify(chat), { EX: 60 });
 
   res
     .status(200)
@@ -295,7 +314,7 @@ const renameGroupChat = async (req: Request, res: Response): Promise<void> => {
   if (!groupChat) {
     throw new ApiError(404, "Group chat does not exist");
   }
-  if (groupChat.admin !== (req as AuthenticatedRequest).user._id) {
+  if (groupChat.admin !== (req as AuthenticatedRequest).user.id) {
     throw new ApiError(403, "You are not an admin");
   }
   const updatedGroupChat = await Chat.findByIdAndUpdate(
@@ -370,7 +389,7 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
   if (!chat) {
     throw new ApiError(404, "Group chat does not exist");
   }
-  if (chat.admin !== (req as AuthenticatedRequest).user._id) {
+  if (chat.admin !== (req as AuthenticatedRequest).user.id) {
     throw new ApiError(403, "Only admin can delete the group");
   }
 
@@ -388,8 +407,8 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
     session.endSession();
   }
 
-  chat?.participants?.forEach((participant) => {
-    if (participant.userId === (req as AuthenticatedRequest).user._id) return;
+  chat.participants.forEach((participant) => {
+    if (participant.userId === (req as AuthenticatedRequest).user.id) return;
     emitSocketEvent(
       req,
       participant.userId,
@@ -400,7 +419,7 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
 
   res
     .status(200)
-    .json(new ApiResponse(200, {}, "Group chat deleted successfully"));
+    .json(new ApiResponse(200, [], "Group chat deleted successfully"));
   return;
 };
 
@@ -432,8 +451,7 @@ const leaveGroupChat = async (req: Request, res: Response): Promise<void> => {
 
   if (
     !existingParticipants?.some(
-      (participant) =>
-        participant.userId === (req as CreateChatRequest).user?._id
+      (participant) => participant.userId === (req as CreateChatRequest).user.id
     )
   ) {
     throw new ApiError(400, "You are not a part of this group chat");
@@ -443,7 +461,7 @@ const leaveGroupChat = async (req: Request, res: Response): Promise<void> => {
     chatId,
     {
       $pull: {
-        participants: (req as CreateChatRequest).user?._id,
+        participants: (req as CreateChatRequest).user.id,
       },
     },
     { new: true }
@@ -466,6 +484,7 @@ const leaveGroupChat = async (req: Request, res: Response): Promise<void> => {
   if (!payload) {
     throw new ApiError(500, "Internal server error");
   }
+  await redisClient.del(`chats:${(req as AuthenticatedRequest).user.id}`);
 
   res
     .status(200)
@@ -517,7 +536,7 @@ const deleteOneOnOneChat = async (
 
   const otherParticipant = payload?.participants?.find(
     (participant) =>
-      participant.userId !== (req as AuthenticatedRequest).user._id.toString()
+      participant.userId !== (req as AuthenticatedRequest).user.id.toString()
   );
 
   if (!otherParticipant) {
@@ -561,7 +580,7 @@ const addNewParticipantInGroupChat = async (
     throw new ApiError(404, "Group chat does not exist");
   }
 
-  if (groupChat.admin !== (req as AuthenticatedRequest).user._id) {
+  if (groupChat.admin !== (req as AuthenticatedRequest).user.id) {
     throw new ApiError(403, "You are not an admin");
   }
 
@@ -638,7 +657,7 @@ const removeParticipantFromGroupChat = async (
     throw new ApiError(404, "Group chat does not exist");
   }
 
-  if (groupChat.admin !== (req as AuthenticatedRequest).user._id) {
+  if (groupChat.admin !== (req as AuthenticatedRequest).user.id) {
     throw new ApiError(403, "You are not an admin");
   }
 
@@ -703,7 +722,7 @@ const removeParticipantFromGroupChat = async (
  * @returns {Promise<void>} A JSON response containing the status code, the list of chats, and a success message.
  */
 const getAllChats = async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as AuthenticatedRequest).user._id;
+  const userId = (req as AuthenticatedRequest).user.id;
   const cacheKey = `chats:${userId}`;
 
   const cachedChats = await redisClient.get(cacheKey);
@@ -724,7 +743,12 @@ const getAllChats = async (req: Request, res: Response): Promise<void> => {
     {
       $match: {
         participants: {
-          $elemMatch: { $eq: (req as AuthenticatedRequest).user._id },
+          $elemMatch: { userId: (req as AuthenticatedRequest).user.id },
+        },
+        deletedFor: {
+          $not: {
+            $elemMatch: { user: (req as AuthenticatedRequest).user.id },
+          },
         },
       },
     },
@@ -737,13 +761,11 @@ const getAllChats = async (req: Request, res: Response): Promise<void> => {
   ]);
 
   await redisClient.set(cacheKey, JSON.stringify(chats), { EX: 60 });
-
   res
     .status(200)
     .json(
       new ApiResponse(200, chats || [], "User chats fetched successfully!")
     );
-  return;
 };
 
 /**
@@ -761,19 +783,21 @@ const pinMessage = async (req: Request, res: Response): Promise<void> => {
   if (!chat) {
     throw new ApiError(404, "Chat not found");
   }
-  if (chat.admin !== (req as AuthenticatedRequest).user._id) {
+  if (chat.admin !== (req as AuthenticatedRequest).user.id) {
     throw new ApiError(403, "Only admin can pin messages");
   }
-  if (!chat.metadata) {
-    chat.metadata = { pinnedMessage: [] };
-  }
-  if (!chat.metadata.pinnedMessage.includes(new Types.ObjectId(messageId))) {
-    chat.metadata.pinnedMessage.push(new Types.ObjectId(messageId));
-  }
-  await chat.save();
+
+  const updatedChat = await Chat.findByIdAndUpdate(
+    chatId,
+    {
+      $addToSet: { "metadata.pinnedMessage": new Types.ObjectId(messageId) },
+    },
+    { new: true }
+  );
+
   res
     .status(200)
-    .json(new ApiResponse(200, chat, "Message pinned successfully"));
+    .json(new ApiResponse(200, updatedChat, "Message pinned successfully"));
 };
 
 /**
@@ -791,20 +815,51 @@ const unpinMessage = async (req: Request, res: Response): Promise<void> => {
   if (!chat) {
     throw new ApiError(404, "Chat not found");
   }
-  if (chat.admin !== (req as AuthenticatedRequest).user._id) {
+  if (chat.admin !== (req as AuthenticatedRequest).user.id) {
     throw new ApiError(403, "Only admin can unpin messages");
   }
-  if (chat.metadata) {
-    chat.metadata.pinnedMessage = chat.metadata.pinnedMessage.filter(
-      (id) => id.toString() !== messageId
-    );
-    await chat.save();
-    res
-      .status(200)
-      .json(new ApiResponse(200, chat, "Message unpinned successfully"));
-  } else {
+
+  const updatedChat = await Chat.findByIdAndUpdate(
+    chatId,
+    {
+      $pull: { "metadata.pinnedMessage": new Types.ObjectId(messageId) },
+    },
+    { new: true }
+  );
+
+  if (!updatedChat) {
     throw new ApiError(400, "No pinned message found");
   }
+  res
+    .status(200)
+    .json(new ApiResponse(200, updatedChat, "Message unpinned successfully"));
+};
+
+const deleteChatForMe = async (req: Request, res: Response): Promise<void> => {
+  const { chatId } = req.params;
+  const userId = (req as AuthenticatedRequest).user.id;
+
+  const chat = await Chat.findById(chatId);
+  if (!chat) {
+    throw new ApiError(404, "Chat not found");
+  }
+
+  if (!chat.participants.some((p) => p.userId === userId)) {
+    throw new ApiError(403, "You are not a participant of this chat");
+  }
+
+  if (chat.deletedFor.some((df) => df.user === userId)) {
+    throw new ApiError(400, "Chat already deleted for you");
+  }
+
+  chat.deletedFor.push({ user: userId, deletedAt: new Date() });
+  await chat.save();
+
+  await redisClient.del(`chats:${userId}`);
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Chat deleted for you successfully"));
 };
 
 export {
@@ -822,4 +877,5 @@ export {
   deleteOneOnOneChat,
   pinMessage,
   unpinMessage,
+  deleteChatForMe,
 };

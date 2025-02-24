@@ -3,16 +3,14 @@ import ApiError from "./ApiError";
 import redisClient from "./redisClient";
 
 export const validateUser = async (userId: string): Promise<boolean> => {
-  const REPO1_API_URL = process.env.REPO1;
   try {
     const cacheKey = `user:${userId}`;
     const cached = await redisClient.get(cacheKey);
     if (cached) return true;
-    const { data } = await axios.get(`${REPO1_API_URL}/users/${userId}`, {
-      timeout: 5000,
-    });
+    const { data } = await axios.get(`${process.env.REPO1_API}/users/validate?userId=${userId}`);
 
-    if (data?.id) {
+
+    if (data.valid) {
       await redisClient.set(cacheKey, "1", { EX: 300 });
       return true;
     }

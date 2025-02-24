@@ -1,4 +1,3 @@
-// src/middleware/errorHandler.middleware.ts
 import { ErrorRequestHandler } from "express";
 import ApiError from "../utils/ApiError";
 

@@ -5,19 +5,20 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import requestIp from "request-ip";
 import cookieParser from "cookie-parser";
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 const httpServer = http.createServer(app);
 
-dotenv.config();
-
-const CLIENT_URL = process.env.CLIENT_URL;
+const CLIENT_URL = process.env.CLIENT_URL || "*";
+const allowedOrigins = CLIENT_URL === "*" ? "*" : CLIENT_URL.split(",").map(url => url.trim());
 
 const io = new Server(httpServer, {
   pingTimeout: 60000,
   cors: {
-    origin: CLIENT_URL,
+    origin: allowedOrigins,
     credentials: true,
   },
 });
@@ -25,50 +26,57 @@ app.set("io", io);
 
 app.use(
   cors({
-    origin: CLIENT_URL === "*" ? "*" : CLIENT_URL?.split(","),
+    origin: allowedOrigins,
     credentials: true,
   })
 );
 app.use(requestIp.mw());
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 100,
+  windowMs: 15 * 60 * 1000,
   max: 5000,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    return req.clientIp || "unknown";
-  },
+  keyGenerator: (req) => req.clientIp || req.ip || "unknown",
   handler: (_, __, ___, options) => {
     throw new Error(
-      `There are too many requests. You are only allowed ${
-        options.limit
-      } requests per ${options.windowMs / 60000} minutes`
+      `Too many requests. You are allowed ${options.limit} requests per ${options.windowMs / 60000} minutes.`
     );
   },
 });
 
 app.use(limiter);
-
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
-app.use(express.static("public")); 
+app.use(express.static("public"));
 app.use(cookieParser());
 
 // Routes
-import chatRouter from './routes/chat.routes';
-import messageRouter from './routes/message.routes'
+import chatRouter from "./routes/chat.routes";
+import messageRouter from "./routes/message.routes";
 import connectDB from "./database/db";
 import { errorHandler } from "./middleware/errorHandler.middleware";
+import { initializeSocketIO } from "./socket";
 
+initializeSocketIO(io);
+
+// API Routes
 app.use("/api/v1/chats", chatRouter);
 app.use("/api/v1/messages", messageRouter);
-app.use("/api/v1/messages", messageRouter);
 
+// Error Handling Middleware
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT, async () => {
-  await connectDB();
-  console.log(`Server is running on port ${PORT}`);
-});
+
+(async () => {
+  try {
+    await connectDB();
+    httpServer.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Database connection failed:", error);
+    process.exit(1);
+  }
+})();
