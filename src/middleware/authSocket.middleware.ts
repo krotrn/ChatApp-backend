@@ -16,7 +16,6 @@ const authenticateSocket = async (
       return next(new ApiError(401, "Authentication token is missing"));
     }
 
-    // Verify JWT
     const decoded = jwt.verify(
       token,
       process.env.ACCESS_TOKEN_SECRET as string
