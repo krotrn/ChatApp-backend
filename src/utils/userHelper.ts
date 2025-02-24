@@ -7,7 +7,7 @@ export const validateUser = async (userId: string): Promise<boolean> => {
     const cacheKey = `user:${userId}`;
     const cached = await redisClient.get(cacheKey);
     if (cached) return true;
-    const { data } = await axios.get(`${process.env.REPO1_API}/users/validate?userId=${userId}`);
+    const { data } = await axios.get(`${process.env.CLIENT_API_URL}/users/validate?userId=${userId}`);
 
 
     if (data.valid) {
