@@ -1,22 +1,10 @@
-import { Request, Response, Router } from "express";
-import { Chat } from "../models/chat.models";
-import { AuthenticatedRequest } from "../types/request.type";
+import { Router } from "express";
+import webhook from "../controllers/webhook.controllers";
+import authenticate from "../middleware/auth.middleware";
+
 const router = Router();
+router.use(authenticate);
 
-router.post("/user-updated", async (req: Request, res: Response) => {
-  const { id, name, avatarUrl } = (req as AuthenticatedRequest).user;
-
-  await Chat.updateMany(
-    { "participants.userId": id },
-    {
-      $set: {
-        "participants.$.name": name,
-        "participants.$.avatarUrl": avatarUrl,
-      },
-    }
-  );
-
-  res.status(200).json({ messgae: "User updated." });
-});
+router.post("/user", webhook);
 
 export default router;

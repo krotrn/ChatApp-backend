@@ -5,12 +5,12 @@ import { Request, Response } from "express";
 import { Chat } from "../models/chat.models";
 import ApiError from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
-import { ChatType } from "../types/Chat.type";
+import { ChatType } from "../types/chat.type";
 import { AuthenticatedRequest, CreateChatRequest } from "../types/request.type";
 import { emitSocketEvent } from "../socket";
 import { ChatEventEnum } from "../utils/constants";
 import { AttachmentType, MessageType } from "../types/message.type";
-import redisClient from "../utils/redisClient";
+import redisClient from "../utils/redis";
 import { validateUser } from "../utils/userHelper";
 import { resilientApiCall } from "../utils/apiRetry";
 

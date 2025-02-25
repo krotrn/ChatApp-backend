@@ -2,7 +2,7 @@ import { Server } from "socket.io";
 import { ChatEventEnum } from "../utils/constants";
 import { CustomSocket } from "../types/Socket.type";
 import authenticateSocket from "../middleware/authSocket.middleware";
-import redisClient from "../utils/redisClient";
+import redisClient from "../utils/redis";
 
 /**
  * Initializes Socket.IO and sets up connection logic with event handlers.
@@ -73,7 +73,7 @@ const emitSocketEvent = (
   req: EmitSocketEventRequest,
   roomId: string,
   event: string,
-  payload: Record<string, unknown>
+  payload: unknown
 ) => {
   req.app.get("io").to(roomId).emit(event, payload);
 };

@@ -13,8 +13,8 @@ import {
 } from "../utils/FileOperations";
 import { emitSocketEvent } from "../socket";
 import { ChatEventEnum } from "../utils/constants";
-import { ChatType } from "../types/Chat.type";
-import redisClient from "../utils/redisClient";
+import { ChatType } from "../types/chat.type";
+import redisClient from "../utils/redis";
 import { validateUser } from "../utils/userHelper";
 import { resilientApiCall } from "../utils/apiRetry";
 
