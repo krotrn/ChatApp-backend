@@ -13,6 +13,8 @@ const chatSchema = new Schema<ChatType>(
     participants: [
       {
         userId: { type: String, required: true },
+        name: { type: String, required: true },
+        avatarUrl: { type: String, required: true },
         role: { type: String, enum: ["member", "admin"], default: "member" },
         joinedAt: { type: Date, default: Date.now },
       },

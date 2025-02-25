@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 
 export interface ChatParticipant {
   userId: string;
+  name: string;
+  avatarUrl: string;
   role: "member" | "admin";
   joinedAt: Date;
 }

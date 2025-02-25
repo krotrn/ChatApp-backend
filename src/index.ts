@@ -54,6 +54,7 @@ app.use(cookieParser());
 // Routes
 import chatRouter from "./routes/chat.routes";
 import messageRouter from "./routes/message.routes";
+import webhookRouter from "./routes/webhooks.route";
 import connectDB from "./database/db";
 import { errorHandler } from "./middleware/errorHandler.middleware";
 import { initializeSocketIO } from "./socket";
@@ -63,6 +64,7 @@ initializeSocketIO(io);
 // API Routes
 app.use("/api/v1/chats", chatRouter);
 app.use("/api/v1/messages", messageRouter);
+app.use("/api/v1/webhook", webhookRouter);
 
 // Error Handling Middleware
 app.use(errorHandler);

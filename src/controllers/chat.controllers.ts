@@ -93,15 +93,25 @@ const createOrGetAOneOnOneChat = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { participants, name } = (req as CreateChatRequest).body;
+  const { participants, name } = req.body;
+  const currentUser = (req as AuthenticatedRequest).user;
 
-  if (participants.length !== 1) {
-    throw new ApiError(400, "Invalid no of participants.");
-  }
-
-  if (participants[0].userId === (req as AuthenticatedRequest).user.id) {
+  const otherParticipant = participants[0];
+  if (otherParticipant.userId === currentUser.id) {
     throw new ApiError(400, "You cannot chat with yourself");
   }
+
+  const currentUserParticipant = {
+    userId: currentUser.id,
+    name: currentUser.name,
+    avatarUrl: currentUser.avatarUrl,
+  };
+  const newChatInstance = await Chat.create({
+    name,
+    participants: [currentUserParticipant, otherParticipant],
+    admin: currentUser.id,
+    createdBy: currentUser.id,
+  });
   if (!(await resilientApiCall(() => validateUser(participants[0].userId)))) {
     throw new ApiError(403, "Invalid User.");
   }
@@ -129,13 +139,6 @@ const createOrGetAOneOnOneChat = async (
       .json(new ApiResponse(200, chat[0], "chat retrived successfully"));
     return;
   }
-
-  const newChatInstance = await Chat.create({
-    name,
-    participants: [(req as AuthenticatedRequest).user.id, participants[0]],
-    admin: (req as AuthenticatedRequest).user.id,
-    createdBy: (req as AuthenticatedRequest).user.id,
-  });
   const createChat = await Chat.aggregate([
     { $match: { _id: newChatInstance._id } },
     ...chatCommonAggregation(),
@@ -584,6 +587,10 @@ const addNewParticipantInGroupChat = async (
     throw new ApiError(403, "You are not an admin");
   }
 
+  if (!(await resilientApiCall(() => validateUser(participantId)))) {
+    throw new ApiError(400, `User ${participantId} not found`);
+  }
+
   const existingParticipants = groupChat.participants;
 
   if (
@@ -598,7 +605,11 @@ const addNewParticipantInGroupChat = async (
     chatId,
     {
       $push: {
-        participants: participantId,
+        participants: {
+          userId: participantId,
+          role: "member",
+          joinedAt: new Date(),
+        },
       },
     },
     { new: true }
