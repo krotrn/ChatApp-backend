@@ -243,9 +243,12 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
   }
 
   await redisClient.del(`messages:${chatId}`);
-  updateChat?.participants.forEach(async (participant) => {
-    await redisClient.del(`chats:${participant}`);
-  });
+  await Promise.all(
+    updateChat.participants.map(async (participant) => {
+      await redisClient.del(`chats:${participant.userId}`);
+    })
+  );
+  
 
   res
     .status(201)
@@ -299,8 +302,8 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
   }
 
   if (message.attachments.length > 0) {
-    message.attachments.forEach((asset) => {
-      removeLocalFile(asset.localPath);
+    message.attachments.forEach(async(asset) => {
+      await removeLocalFile(asset.localPath);
     });
   }
 

@@ -1,59 +1,67 @@
 import multer from "multer";
+import path from "path";
+import ApiError from "../utils/ApiError";
+import { Request } from "express";
 
-/**
- * Multer storage configuration for handling file uploads.
- * 
- * This configuration sets the destination and filename for uploaded files.
- * 
- * - `destination`: Specifies the directory where uploaded files will be stored.
- * - `filename`: Generates a unique filename for each uploaded file by appending
- *   the current timestamp and a random number to the original filename (with spaces
- *   replaced by hyphens and converted to lowercase).
- * 
- * @param {Express.Request} req - The request object.
- * @param {Express.Multer.File} file - The file object containing information about the uploaded file.
- * @param {Function} cb - The callback function to call with the destination or filename.
- */
+const generateFilename = (req: Request, file: Express.Multer.File) => {
+  const sanitized = file.originalname
+    .replace(/[^a-zA-Z0-9\-_.]/g, "")
+    .replace(/\s+/g, "-")
+    .toLowerCase();
+
+  const ext = path.extname(sanitized);
+  if (!ext) throw new ApiError(400, "File extension missing");
+
+  return `${path.basename(sanitized, ext)}-${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2, 15)}${ext}`;
+};
+
+const fileFilter = (
+  req: Express.Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  const allowedExtensions = ['.jpg', '.png', '.pdf', '.txt'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  
+  if (!allowedExtensions.includes(ext)) {
+    return cb(new ApiError(400, "Invalid file extension"));
+  }
+  const allowedMimes = [
+    "image/jpeg",
+    "image/png",
+    "application/pdf",
+    "text/plain",
+  ];
+
+  if (!allowedMimes.includes(file.mimetype)) {
+    return cb(new ApiError(400, "Invalid file type"));
+  }
+  cb(null, true);
+};
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "./public/images");
+    cb(null, path.resolve(process.cwd(), "public/images"));
   },
   filename: (req, file, cb) => {
-    let fileExtension = "";
-    if (file.originalname.split(".").length > 1) {
-      fileExtension = file.originalname.substring(
-        file.originalname.lastIndexOf(".")
-      );
+    try {
+      const filename = generateFilename(req, file);
+      cb(null, filename);
+    } catch (error) {
+      console.log(error);
+      cb((error as Error), "");
     }
-    const filenameWithoutExtension = file.originalname
-      .toLowerCase()
-      .split(" ")
-      .join("-")
-      ?.split(".")[0];
-    cb(
-      null,
-      filenameWithoutExtension +
-        Date.now() +
-        Math.ceil(Math.random() * 1e5) +
-        fileExtension
-    );
   },
 });
 
-/**
- * Middleware for handling file uploads using multer.
- * 
- * This middleware is configured with the following options:
- * - `storage`: The storage engine to use for uploaded files.
- * - `limits`: An object specifying various limits on the uploaded files.
- *   - `fileSize`: The maximum file size allowed for uploads, set to 1 MB.
- * 
- * @constant
- * @type {multer.Multer}
- */
-export const upload: multer.Multer = multer({
+export const upload = multer({
   storage,
   limits: {
-    fileSize: 1 * 1000 * 1000,
+    fileSize: 5 * 1024 * 1024,
+    files: 5,
   },
+  fileFilter,
+  preservePath: false,
 });

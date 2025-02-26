@@ -63,8 +63,8 @@ const deleteCascadeChatMessages = async (chatId: string): Promise<void> => {
   messages.forEach((message) => {
     attachments.push(...message.attachments);
   });
-  attachments.forEach((attachment) => {
-    removeLocalFile(attachment.localPath);
+  attachments.forEach(async (attachment) => {
+    await removeLocalFile(attachment.localPath);
   });
 
   await ChatMessage.deleteMany({

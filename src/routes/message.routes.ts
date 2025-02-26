@@ -8,6 +8,7 @@ import {
   replyMessage,
 } from "../controllers/message.controllers";
 import authenticate from "../middleware/auth.middleware";
+import { handleUploadErrors } from "../middleware/handleUploadErrors.middleware";
 
 const router = Router();
 router.use(authenticate);
@@ -20,7 +21,7 @@ router.use(authenticate);
 router
   .route("/:chatId")
   .get(getAllMessages)
-  .post(upload.fields([{ name: "attachments", maxCount: 5 }]), sendMessage);
+  .post(upload.fields([{ name: "attachments", maxCount: 5 }]),handleUploadErrors, sendMessage);
 
 /**
  * DELETE /api/v1/chat-app/messages/:chatId/:messageId

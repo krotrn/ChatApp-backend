@@ -1,13 +1,15 @@
 import { Request } from "express";
 import fs from "fs";
+import path from "path";
 export const removeLocalFile = (localPath: string) => {
-  fs.unlink(localPath, (err) => {
-    if (err) console.log("Error while removing local files: ", err);
-    else {
-      console.log("Removed local: ", localPath);
-    }
+  return new Promise((resolve, reject) => {
+    fs.unlink(localPath, (err) => {
+      if (err) reject(err);
+      else resolve(true);
+    });
   });
 };
+
 
 /**
  *
@@ -15,8 +17,11 @@ export const removeLocalFile = (localPath: string) => {
  * @description returns the file's local path in the file system to assist future removal
  */
 export const getLocalPath = (fileName: string) => {
-  return `public/images/${fileName}`;
+  // Sanitize filename to prevent path traversal
+  const sanitized = fileName.replace(/[^a-zA-Z0-9\-_.]/g, '');
+  return path.join(process.cwd(), 'public', 'images', sanitized);
 };
+
 
 /**
  *
@@ -25,5 +30,11 @@ export const getLocalPath = (fileName: string) => {
  * @description returns the file's static path from where the server is serving the static image
  */
 export const getStaticFilePath = (req: Request, fileName: string) => {
-  return `${req.protocol}://${req.get("host")}/images/${fileName}`;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.get('host')?.replace(/:\d+$/, ''); 
+  if (!/^[\w-]+\.[a-z]{3,4}$/i.test(fileName)) {
+    throw new Error('Invalid filename format');
+  }
+  return `${protocol}://${host}/images/${fileName}`;
 };
+
