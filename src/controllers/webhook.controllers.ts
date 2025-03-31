@@ -4,11 +4,10 @@ import redisClient from "../utils/redis";
 
 const router = Router();
 
-router.post("/user", async (req: Request, res: Response) => {
+router.post("/", async (req: Request, res: Response) => {
   const { userId, action, data } = req.body;
   try {
     if (action === "delete") {
-      // Remove user from all chats
       await Chat.updateMany(
         { "participants.userId": userId },
         { $pull: { participants: { userId } } }

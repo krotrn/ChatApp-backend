@@ -10,6 +10,10 @@ const chatSchema = new Schema<ChatType>(
       type: Schema.Types.ObjectId,
       ref: "ChatMessage",
     },
+    avatar: {
+      type: String,
+      default: "",
+    },
     participants: [
       {
         userId: { type: String, required: true },

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 export interface ChatParticipant {
   userId: string;
@@ -12,12 +12,13 @@ export interface ChatType extends mongoose.Document {
   name: string;
   lastMessage?: mongoose.Types.ObjectId;
   participants: ChatParticipant[];
+  avatar: string | "";
   admin?: string;
   type: "direct" | "group" | "channel";
   createdBy: string;
-  deletedFor: [{ user: string, deletedAt: Date; }];
+  deletedFor: [{ user: string; deletedAt: Date }];
   metadata?: {
-    pinnedMessage: mongoose.Types.ObjectId[],
-    customePermissions?: unknown
-  }
+    pinnedMessage: mongoose.Types.ObjectId[];
+    customePermissions?: unknown;
+  };
 }
