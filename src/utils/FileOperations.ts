@@ -11,24 +11,12 @@ export const removeLocalFile = (localPath: string) => {
 };
 
 
-/**
- *
- * @param {string} fileName
- * @description returns the file's local path in the file system to assist future removal
- */
 export const getLocalPath = (fileName: string) => {
-  // Sanitize filename to prevent path traversal
   const sanitized = fileName.replace(/[^a-zA-Z0-9\-_.]/g, '');
   return path.join(process.cwd(), 'public', 'images', sanitized);
 };
 
 
-/**
- *
- * @param {import("express").Request} req
- * @param {string} fileName
- * @description returns the file's static path from where the server is serving the static image
- */
 export const getStaticFilePath = (req: Request, fileName: string) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   const host = req.get('host')?.replace(/:\d+$/, ''); 

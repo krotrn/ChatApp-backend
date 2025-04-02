@@ -14,15 +14,6 @@ import redisClient from "../utils/redis";
 import { validateUser } from "../utils/userHelper";
 import { resilientApiCall } from "../utils/apiRetry";
 
-/**
- * Generates a common aggregation pipeline for chat-related queries.
- *
- * This pipeline performs the following operations:
- * 1. `$lookup`: Joins the `chatmessages` collection with the current collection based on the `lastMessage` field.
- * 2. `$addFields`: Adds the first element of the `lastMessage` array to the document.
- *
- * @returns {PipelineStage[]} An array of aggregation pipeline stages.
- */
 const chatCommonAggregation = (): PipelineStage[] => {
   return [
     {
@@ -41,19 +32,6 @@ const chatCommonAggregation = (): PipelineStage[] => {
   ];
 };
 
-/**
- * Deletes all chat messages associated with a given chat ID and removes their local file attachments.
- *
- * @param {string} chatId - The ID of the chat whose messages are to be deleted.
- * @returns {Promise<void>} - A promise that resolves when the operation is complete.
- *
- * @async
- * @function deleteCascadeChatMessages
- *
- * @example
- * // Deletes all messages and their attachments for the specified chat ID
- * await deleteCascadeChatMessages('60d21b4667d0d8992e610c85');
- */
 const deleteCascadeChatMessages = async (chatId: string): Promise<void> => {
   const messages: MessageType[] = await ChatMessage.find({
     chat: new Types.ObjectId(chatId),
@@ -63,32 +41,37 @@ const deleteCascadeChatMessages = async (chatId: string): Promise<void> => {
   messages.forEach((message) => {
     attachments.push(...message.attachments);
   });
-  attachments.forEach(async (attachment) => {
-    await removeLocalFile(attachment.localPath);
-  });
+  await Promise.all(
+    attachments.map(async (attachment) => {
+      await removeLocalFile(attachment.localPath);
+    })
+  );
 
   await ChatMessage.deleteMany({
     chat: new Types.ObjectId(chatId),
   });
 };
 
-/**
- * Creates or retrieves a one-on-one chat between the authenticated user and the specified receiver.
- *
- * @param req - The request object, which includes the authenticated user's information and the receiver's ID.
- * @param res - The response object used to send back the appropriate response.
- *
- * @throws {ApiError} If the user attempts to chat with themselves or if there is an internal server error.
- *
- * @returns {Promise<void>} A promise that resolves to Response.
- *
- * The function performs the following steps:
- * 1. Checks if the receiverId is the same as the authenticated user's ID and throws an error if true.
- * 2. Searches for an existing direct chat between the authenticated user and the receiver.
- * 3. If a chat exists, returns the chat details in the response.
- * 4. If no chat exists, creates a new one-on-one chat and returns the new chat details in the response.
- * 5. Emits a socket event to notify the receiver of the new chat.
- */
+const getChatById = async (req: Request, res: Response): Promise<void> => {
+  const { chatId } = req.params;
+
+  if (!chatId) {
+    throw new ApiError(404, "Chat ID is required");
+  }
+
+  const chats = await Chat.aggregate([
+    { $match: { _id: new Types.ObjectId(chatId) } },
+    ...chatCommonAggregation(),
+  ]);
+
+  if (!chats || chats.length === 0) {
+    throw new ApiError(404, "Chat not found");
+  }
+
+  const chat = chats[0];
+  res.status(200).json(new ApiResponse(200, chat, "Chat fetched successfully"));
+};
+
 const createOrGetAOneOnOneChat = async (
   req: Request,
   res: Response
@@ -126,7 +109,11 @@ const createOrGetAOneOnOneChat = async (
               $elemMatch: { $eq: (req as AuthenticatedRequest).user.id },
             },
           },
-          { participants: { $elemMatch: { $eq: participants[0] } } },
+          {
+            participants: {
+              $elemMatch: { $eq: participants[0] },
+            },
+          },
         ],
       },
     },
@@ -166,16 +153,6 @@ const createOrGetAOneOnOneChat = async (
   return;
 };
 
-/**
- * Creates a new group chat.
- *
- * @param req - The request object containing the chat details.
- * @param res - The response object to send the result.
- * @throws {ApiError} If the participants array contains the group creator.
- * @throws {ApiError} If there are duplicate participants.
- * @throws {ApiError} If the payload is not created successfully.
- * @returns {Promise<void>} A response with the created group chat details.
- */
 const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { name, participants } = (req as CreateChatRequest).body;
   if (
@@ -249,14 +226,6 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   return;
 };
 
-/**
- * Retrieves the details of a group chat based on the provided chat ID.
- *
- * @param req - The request object containing the chat ID in the parameters.
- * @param res - The response object used to send the response back to the client.
- * @returns {Promise<void>} A JSON response containing the group chat details if found, or an error if the group chat does not exist.
- * @throws {ApiError} If the group chat does not exist.
- */
 const getGroupChatDetails = async (
   req: Request,
   res: Response
@@ -277,7 +246,7 @@ const getGroupChatDetails = async (
       );
     return;
   }
-  const groupChat = await Chat.aggregate([
+  const groupChat: ChatType[] = await Chat.aggregate([
     {
       $match: {
         _id: new Types.ObjectId(chatId),
@@ -299,14 +268,6 @@ const getGroupChatDetails = async (
   return;
 };
 
-/**
- * Renames a group chat.
- *
- * @param req - The request object containing the chat ID in the parameters and the new name in the body.
- * @param res - The response object used to send the response back to the client.
- * @throws {ApiError} If the group chat does not exist, if the user is not an admin, or if the group chat name cannot be updated.
- * @returns {Promise<void>} A JSON response with the updated group chat information.
- */
 const renameGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
   const { name } = req.body;
@@ -365,15 +326,6 @@ const renameGroupChat = async (req: Request, res: Response): Promise<void> => {
   return;
 };
 
-/**
- * Deletes a group chat.
- *
- * @param {Request} req - The request object containing the chat ID in the parameters.
- * @param {Response} res - The response object to send the result of the deletion.
- * @throws {ApiError} - Throws a 404 error if the group chat does not exist.
- * @throws {ApiError} - Throws a 403 error if the user is not the admin of the group chat.
- * @returns {Promise<void>} - Returns a response indicating the group chat was deleted successfully.
- */
 const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
 
@@ -426,19 +378,6 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
   return;
 };
 
-/**
- * Handles the request to leave a group chat.
- *
- * @param req - The request object containing the chat ID in the parameters.
- * @param res - The response object used to send the response back to the client.
- *
- * @throws {ApiError} If the group chat does not exist.
- * @throws {ApiError} If the user is not a part of the group chat.
- * @throws {ApiError} If the group chat cannot be updated.
- * @throws {ApiError} If there is an internal server error.
- *
- * @returns {Promise<void>} A response indicating the user has successfully left the group chat.
- */
 const leaveGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
   const groupChat = await Chat.findOne({
@@ -495,23 +434,6 @@ const leaveGroupChat = async (req: Request, res: Response): Promise<void> => {
   return;
 };
 
-/**
- * Deletes a one-on-one chat.
- *
- * This function handles the deletion of a one-on-one chat by its chat ID. It performs the following steps:
- * 1. Aggregates the chat data using the provided chat ID.
- * 2. Checks if the chat exists; if not, throws a 404 error.
- * 3. Deletes the chat by its ID.
- * 4. Deletes all messages associated with the chat.
- * 5. Finds the other participant in the chat.
- * 6. Emits a socket event to notify the other participant about the chat deletion.
- * 7. Sends a success response to the client.
- *
- * @param req - The request object containing the chat ID in the parameters and the user information.
- * @param res - The response object used to send the status and JSON response.
- * @throws {ApiError} - Throws a 404 error if the chat or the other participant does not exist.
- * @returns {Promise<void>} - Returns a promise that resolves when the chat is successfully deleted.
- */
 const deleteOneOnOneChat = async (
   req: Request,
   res: Response
@@ -556,18 +478,6 @@ const deleteOneOnOneChat = async (
   return;
 };
 
-/**
- * Adds a new participant to a group chat.
- *
- * @param req - The request object containing the chatId and participantId in the params.
- * @param res - The response object used to send the response.
- * @throws {ApiError} If the group chat does not exist.
- * @throws {ApiError} If the user is not an admin of the group chat.
- * @throws {ApiError} If the participant is already in the group chat.
- * @throws {ApiError} If the group chat cannot be updated.
- * @throws {ApiError} If there is an internal server error.
- * @returns {Promise<void>} A JSON response with the updated chat information and a success message.
- */
 const addNewParticipantInGroupChat = async (
   req: Request,
   res: Response
@@ -641,18 +551,6 @@ const addNewParticipantInGroupChat = async (
   return;
 };
 
-/**
- * Removes a participant from a group chat.
- *
- * @param req - The request object containing the chat ID and participant ID in the parameters.
- * @param res - The response object used to send the response back to the client.
- * @throws {ApiError} - Throws a 404 error if the group chat does not exist.
- * @throws {ApiError} - Throws a 403 error if the requesting user is not an admin of the group chat.
- * @throws {ApiError} - Throws a 400 error if the participant does not exist in the group chat.
- * @throws {ApiError} - Throws a 404 error if the chat could not be updated.
- * @throws {ApiError} - Throws a 500 error if there is an internal server error.
- * @returns {Promise<void>} - Returns a response with a status of 200 and a message indicating the participant was removed successfully.
- */
 const removeParticipantFromGroupChat = async (
   req: Request,
   res: Response
@@ -719,19 +617,6 @@ const removeParticipantFromGroupChat = async (
   return;
 };
 
-/**
- * Retrieves all chat conversations for the authenticated user.
- *
- * This function uses MongoDB aggregation to fetch all chat documents
- * where the authenticated user is a participant. The chats are sorted
- * by the `updatedAt` field in descending order and additional common
- * aggregation stages are applied.
- *
- * @param req - The request object, extended to include the authenticated user's information.
- * @param res - The response object used to send back the HTTP response.
- *
- * @returns {Promise<void>} A JSON response containing the status code, the list of chats, and a success message.
- */
 const getAllChats = async (req: Request, res: Response): Promise<void> => {
   const userId = (req as AuthenticatedRequest).user.id;
   const cacheKey = `chats:${userId}`;
@@ -779,15 +664,6 @@ const getAllChats = async (req: Request, res: Response): Promise<void> => {
     );
 };
 
-/**
- * Pins a message in a chat.
- *
- * @param {Request} req - The request object containing chatId and messageId in params.
- * @param {Response} res - The response object to send the result.
- * @throws {ApiError} 404 - If the chat is not found.
- * @throws {ApiError} 403 - If the user is not the admin of the chat.
- * @returns {Promise<void>} - A promise that resolves when the message is pinned successfully.
- */
 const pinMessage = async (req: Request, res: Response): Promise<void> => {
   const { chatId, messageId } = req.params;
   const chat = await Chat.findById(chatId);
@@ -811,15 +687,6 @@ const pinMessage = async (req: Request, res: Response): Promise<void> => {
     .json(new ApiResponse(200, updatedChat, "Message pinned successfully"));
 };
 
-/**
- * Unpins a message from a chat.
- *
- * @param req - The request object containing the chatId and messageId in the parameters.
- * @param res - The response object used to send the response back to the client.
- * @throws {ApiError} If the chat is not found (404) or if the user is not the admin (403).
- * @throws {ApiError} If there is no pinned message found (400).
- * @returns {Promise<void>} A promise that resolves when the message is successfully unpinned.
- */
 const unpinMessage = async (req: Request, res: Response): Promise<void> => {
   const { chatId, messageId } = req.params;
   const chat = await Chat.findById(chatId);
@@ -889,4 +756,5 @@ export {
   pinMessage,
   unpinMessage,
   deleteChatForMe,
+  getChatById,
 };

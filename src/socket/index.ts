@@ -4,10 +4,7 @@ import { CustomSocket } from "../types/Socket.type";
 import authenticateSocket from "../middleware/authSocket.middleware";
 import redisClient from "../utils/redis";
 
-/**
- * Initializes Socket.IO and sets up connection logic with event handlers.
- * @param io - The Socket.IO server instance
- */
+
 const initializeSocketIO = (io: Server) => {
   io.use(authenticateSocket);
 
@@ -56,13 +53,6 @@ const initializeSocketIO = (io: Server) => {
   });
 };
 
-/**
- * Emits a Socket.IO event to a specific room.
- * @param req - Request object containing the Socket.IO instance
- * @param roomId - The ID of the room to emit the event to
- * @param event - The event name
- * @param payload - The data to send with the event
- */
 interface EmitSocketEventRequest {
   app: {
     get: (name: string) => Server;

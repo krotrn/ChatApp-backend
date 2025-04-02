@@ -2,9 +2,6 @@ import { Response, NextFunction } from 'express';
 import { CreateChatRequest } from '../types/request.type';
 import ApiError  from '../utils/ApiError';
 
-/**
- * Middleware to validate the request body for creating a new chat.
- */
 export const validateCreateChatRequest = (
   req: CreateChatRequest,
   res: Response,

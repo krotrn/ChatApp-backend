@@ -13,18 +13,18 @@ import {
   pinMessage,
   unpinMessage,
   deleteChatForMe,
+  getChatById,
 } from "../controllers/chat.controllers";
 import authenticate from "../middleware/auth.middleware";
 
 const router = Router();
 
-// Apply authentication middleware
 router.use(authenticate);
 
 // Chat routes
 router.get("/", getAllChats);
 router.post("/chat", createOrGetAOneOnOneChat);
-router.delete("/chat/:chatId", deleteOneOnOneChat);
+router.route("/chat/:chatId").delete(deleteOneOnOneChat).get(getChatById);
 router.delete("/chat/:chatId/me", deleteChatForMe);
 
 // Group chat routes
@@ -36,19 +36,15 @@ router
   .delete(deleteGroupChat);
 
 router
-  .post(
-    "/group/:chatId/participant/:participantId",
-    addNewParticipantInGroupChat
-  )
-  .delete(
-    "/group/:chatId/participant/:participantId",
-    removeParticipantFromGroupChat
-  );
+  .route("/group/:chatId/participant/:participantId")
+  .post(addNewParticipantInGroupChat)
+  .delete(removeParticipantFromGroupChat);
 router.delete("/group/:chatId/leave", leaveGroupChat);
 
 // Pin/Unpin message routes
 router
-  .post("/chat/:chatId/pin/:messageId", pinMessage)
-  .delete("/chat/:chatId/pin/:messageId", unpinMessage);
+  .route("/chat/:chatId/pin/:messageId")
+  .post(pinMessage)
+  .delete(unpinMessage);
 
 export default router;
