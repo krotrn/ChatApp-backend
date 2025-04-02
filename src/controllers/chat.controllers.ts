@@ -10,7 +10,6 @@ import { AuthenticatedRequest, CreateChatRequest } from "../types/request.type";
 import { emitSocketEvent } from "../socket";
 import { ChatEventEnum } from "../utils/constants";
 import { AttachmentType, MessageType } from "../types/message.type";
-import redisClient from "../utils/redis";
 import { validateUser } from "../utils/userHelper";
 import { resilientApiCall } from "../utils/apiRetry";
 
@@ -137,7 +136,6 @@ const createOrGetAOneOnOneChat = async (
   }
 
   payload.participants.forEach(async (participant) => {
-    await redisClient.del(`chats:${participant.userId}`);
     if (participant.userId === (req as AuthenticatedRequest).user.id) return;
     emitSocketEvent(
       req,
@@ -210,7 +208,6 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   }
 
   payload.participants.forEach(async (participant) => {
-    await redisClient.del(`chats:${participant.userId}`);
     if (participant.userId === (req as AuthenticatedRequest).user.id) return;
     emitSocketEvent(
       req,
@@ -231,21 +228,6 @@ const getGroupChatDetails = async (
   res: Response
 ): Promise<void> => {
   const { chatId } = req.params;
-  const cacheKey = `group:${chatId}`;
-
-  const cachedChats = await redisClient.get(cacheKey);
-  if (cachedChats) {
-    res
-      .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          JSON.parse(cachedChats),
-          "User chats fetched from cache"
-        )
-      );
-    return;
-  }
   const groupChat: ChatType[] = await Chat.aggregate([
     {
       $match: {
@@ -260,7 +242,6 @@ const getGroupChatDetails = async (
   if (!chat) {
     throw new ApiError(404, "Group chat does not exist");
   }
-  await redisClient.set(cacheKey, JSON.stringify(chat), { EX: 60 });
 
   res
     .status(200)
@@ -426,7 +407,6 @@ const leaveGroupChat = async (req: Request, res: Response): Promise<void> => {
   if (!payload) {
     throw new ApiError(500, "Internal server error");
   }
-  await redisClient.del(`chats:${(req as AuthenticatedRequest).user.id}`);
 
   res
     .status(200)
@@ -618,22 +598,6 @@ const removeParticipantFromGroupChat = async (
 };
 
 const getAllChats = async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as AuthenticatedRequest).user.id;
-  const cacheKey = `chats:${userId}`;
-
-  const cachedChats = await redisClient.get(cacheKey);
-  if (cachedChats) {
-    res
-      .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          JSON.parse(cachedChats),
-          "User chats fetched from cache"
-        )
-      );
-    return;
-  }
 
   const chats = await Chat.aggregate([
     {
@@ -655,8 +619,6 @@ const getAllChats = async (req: Request, res: Response): Promise<void> => {
     },
     ...chatCommonAggregation(),
   ]);
-
-  await redisClient.set(cacheKey, JSON.stringify(chats), { EX: 60 });
   res
     .status(200)
     .json(
@@ -732,8 +694,6 @@ const deleteChatForMe = async (req: Request, res: Response): Promise<void> => {
 
   chat.deletedFor.push({ user: userId, deletedAt: new Date() });
   await chat.save();
-
-  await redisClient.del(`chats:${userId}`);
 
   res
     .status(200)

@@ -50,9 +50,8 @@ X-RateLimit-Reset: 900
 
 ---
 
-## Caching and Error Handling
+## Error Handling
 
-- **Caching:** Frequently requested data (like chats and messages) is cached using Redis with a 60-second expiry.
 - **Error Responses:** Errors use a standard structure and appropriate HTTP status codes. For example, if required fields are missing, a `400 Bad Request` is returned; for insufficient permissions, a `403 Forbidden` is returned.
 
 ---
@@ -632,6 +631,5 @@ socket.on('connected', () => {
 
 ## Final Notes
 
-- **Caching:** Both chat and message endpoints utilize Redis caching. Clients should note that cached data is refreshed every 60 seconds.
 - **Transactions:** Deletion of group chats uses MongoDB transactions to ensure that both the chat document and associated messages are deleted consistently.
 - **Error Handling:** All endpoints follow a consistent error response structure with clear HTTP status codes for common issues like authentication, authorization, and invalid input.

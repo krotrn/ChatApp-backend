@@ -2,7 +2,6 @@ import { Server } from "socket.io";
 import { ChatEventEnum } from "../utils/constants";
 import { CustomSocket } from "../types/Socket.type";
 import authenticateSocket from "../middleware/authSocket.middleware";
-import redisClient from "../utils/redis";
 
 
 const initializeSocketIO = (io: Server) => {
@@ -16,7 +15,6 @@ const initializeSocketIO = (io: Server) => {
       }
 
       socket.join(socket.user.id);
-      await redisClient.set(`conn:${socket.user.id}`, "connected");
 
       socket.emit(ChatEventEnum.CONNECTED_EVENT);
       console.log("User connected 🗼. userId:", socket.user.id);
@@ -38,7 +36,6 @@ const initializeSocketIO = (io: Server) => {
 
       socket.on(ChatEventEnum.DISCONNECT_EVENT, async () => {
         if (socket.user) {
-          await redisClient.del(`conn:${socket.user.id}`);
           console.log("User disconnected 🚫. userId:", socket.user.id);
           socket.leave(socket.user.id);
         }

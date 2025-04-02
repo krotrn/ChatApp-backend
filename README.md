@@ -10,7 +10,6 @@ This repository, **Chat_Backend**, contains the backend service for a real-time 
 - **Authentication and Authorization**: Integrates with CLIENT_REPO for user validation using JWT tokens and an internal API key.
 - **File Handling**: Supports message attachments via Multer.
 - **Error Handling and Validation**: Custom error handling and request validation middleware.
-- **Caching**: Uses Redis to cache chat and message data for improved performance.
 
 ## Project Overview 🔍
 
@@ -22,7 +21,6 @@ To run this project locally, ensure you have the following installed:
 
 - **Node.js** (v14 or higher)
 - **MongoDB** (local or cloud instance, e.g., MongoDB Atlas)
-- **Redis** (for caching, local or cloud instance like Redis Labs)
 - **CLIENT_REPO** (running and accessible for user management)
 
 ## Setup and Installation 🛠️
@@ -49,7 +47,6 @@ Follow these steps to set up and run the project locally:
      ```
      PORT=5000
      MONGODB_URI=<your-mongodb-connection-string>
-     REDIS_URL=<your-redis-connection-url>
      ACCESS_TOKEN_SECRET=<jwt-secret-key>
      CLIENT_URL=<allowed-cors-origins>
      CLIENT_API_URL=<api-base-url>
@@ -126,9 +123,8 @@ Ensure CLIENT_REPO is running and `CLIENT_API_URL` is set correctly in `.env`.
 ## Database 🗄️
 
 - **MongoDB**: Stores chats and messages (no user data).
-- **Redis**: Caches chat and message data for performance.
 
-Set up MongoDB and Redis instances and update `.env` with their connection URIs.
+Set up MongoDB instances and update `.env` with their connection URIs.
 
 ## Error Handling ❌
 
@@ -156,7 +152,6 @@ To deploy the application:
      ```
      PORT=5000
      MONGODB_URI=mongodb://<production-uri>
-     REDIS_URL=redis://<production-uri>
      ACCESS_TOKEN_SECRET=<secret>
      CLIENT_URL=https://your-frontend.com
      CLIENT_API_URL=https://CLIENT_REPO.yourdomain.com
@@ -169,7 +164,7 @@ To deploy the application:
    ```
 
 4. **Database and Services**:
-   - Use cloud services like MongoDB Atlas and Redis Labs.
+   - Use cloud services like MongoDB Atlas.
    - Ensure CLIENT_REPO is deployed and accessible.
 
 ## Contributing 🤝

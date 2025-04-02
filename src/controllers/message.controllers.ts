@@ -14,7 +14,6 @@ import {
 import { emitSocketEvent } from "../socket";
 import { ChatEventEnum } from "../utils/constants";
 import { ChatType } from "../types/chat.type";
-import redisClient from "../utils/redis";
 import { validateUser } from "../utils/userHelper";
 import { resilientApiCall } from "../utils/apiRetry";
 
@@ -40,21 +39,6 @@ const chatMessageCommonAggregation = (): PipelineStage[] => {
 
 const getAllMessages = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
-  const cacheKey = `messages:${chatId}`;
-
-  const cachedData = await redisClient.get(cacheKey);
-  if (cachedData) {
-    res
-      .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          JSON.parse(cachedData),
-          "Messages fetched from cache"
-        )
-      );
-    return;
-  }
 
   const selectedChat = await Chat.findById(chatId);
   if (!selectedChat) {
@@ -83,8 +67,6 @@ const getAllMessages = async (req: Request, res: Response): Promise<void> => {
       },
     },
   ]);
-
-  await redisClient.set(cacheKey, JSON.stringify(messages), { EX: 60 });
 
   res
     .status(200)
@@ -177,13 +159,6 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
     });
   }
 
-  await redisClient.del(`messages:${chatId}`);
-  await Promise.all(
-    updateChat.participants.map(async (participant) => {
-      await redisClient.del(`chats:${participant.userId}`);
-    })
-  );
-
   res
     .status(201)
     .json(new ApiResponse(201, receivedMessage, "Message saved successfully"));
@@ -245,7 +220,6 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
     );
   });
 
-  await redisClient.del(`messages:${chatId}`);
   res
     .status(200)
     .json(new ApiResponse(200, message, "Message deleted successfully"));
@@ -294,7 +268,6 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
     );
   });
 
-  await redisClient.del(`messages:${chatId}`);
   res.status(201).json(new ApiResponse(201, reply, "Reply sent successfully"));
 };
 
