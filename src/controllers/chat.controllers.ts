@@ -137,7 +137,7 @@ const createOrGetAOneOnOneChat = async (
 
   payload.participants.forEach(async (participant) => {
     if (participant.userId === (req as AuthenticatedRequest).user.id) return;
-    emitSocketEvent(
+    emitSocketEvent<ChatType>(
       req,
       participant.userId,
       ChatEventEnum.NEW_CHAT_EVENT,
@@ -209,7 +209,7 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
 
   payload.participants.forEach(async (participant) => {
     if (participant.userId === (req as AuthenticatedRequest).user.id) return;
-    emitSocketEvent(
+    emitSocketEvent<ChatType>(
       req,
       participant.userId,
       ChatEventEnum.NEW_CHAT_EVENT,
@@ -291,7 +291,7 @@ const renameGroupChat = async (req: Request, res: Response): Promise<void> => {
   }
 
   payload?.participants?.forEach((participant) => {
-    emitSocketEvent(
+    emitSocketEvent<ChatType>(
       req,
       participant.userId,
       ChatEventEnum.UPDATE_GROUP_NAME_EVENT,
@@ -345,7 +345,7 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
 
   chat.participants.forEach((participant) => {
     if (participant.userId === (req as AuthenticatedRequest).user.id) return;
-    emitSocketEvent(
+    emitSocketEvent<ChatType>(
       req,
       participant.userId,
       ChatEventEnum.LEAVE_CHAT_EVENT,
@@ -447,7 +447,7 @@ const deleteOneOnOneChat = async (
   if (!otherParticipant) {
     throw new ApiError(404, "Other user not found.");
   }
-  emitSocketEvent(
+  emitSocketEvent<ChatType>(
     req,
     otherParticipant.userId,
     ChatEventEnum.LEAVE_CHAT_EVENT,

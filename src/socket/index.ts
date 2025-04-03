@@ -56,11 +56,11 @@ interface EmitSocketEventRequest {
   };
 }
 
-const emitSocketEvent = (
+const emitSocketEvent = <T>(
   req: EmitSocketEventRequest,
   roomId: string,
   event: string,
-  payload: unknown
+  payload: T
 ) => {
   req.app.get("io").to(roomId).emit(event, payload);
 };

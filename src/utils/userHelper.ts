@@ -17,7 +17,7 @@ export const validateUser = async (userId: string): Promise<boolean> => {
       throw new ApiError(500, "Validation service error");
     }
 
-    return false;
+    return data.valid;
   } catch (error) {
     if (axios.isAxiosError(error)) {
       throw new ApiError(
