@@ -58,9 +58,11 @@ import webhookRouter from "./routes/webhooks.route";
 import connectDB from "./database/db";
 import { errorHandler } from "./middleware/errorHandler.middleware";
 import { initializeSocketIO } from "./socket";
+import authenticate from "./middleware/auth.middleware";
 
 initializeSocketIO(io);
 
+app.use(authenticate);
 // API Routes
 app.use("/api/v1/chats", chatRouter);
 app.use("/api/v1/messages", messageRouter);

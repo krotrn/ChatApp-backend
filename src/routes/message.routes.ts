@@ -7,11 +7,9 @@ import {
   updateReaction,
   replyMessage,
 } from "../controllers/message.controllers";
-import authenticate from "../middleware/auth.middleware";
 import { handleUploadErrors } from "../middleware/handleUploadErrors.middleware";
 
 const router = Router();
-router.use(authenticate);
 
 router
   .route("/:chatId")

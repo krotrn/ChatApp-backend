@@ -20,7 +20,7 @@ const initializeSocketIO = (io: Server) => {
       console.log("User connected 🗼. userId:", socket.user.id);
 
       // Joining a chat room
-      socket.on(ChatEventEnum.JOIN_CHAT_EVENT, (chatId: string) => {
+      socket.on(ChatEventEnum.ONLINE_EVENT, (chatId: string) => {
         console.log(`User joined the chat 🤝. chatId:`, chatId);
         socket.join(chatId);
       });

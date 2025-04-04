@@ -15,11 +15,8 @@ import {
   deleteChatForMe,
   getChatById,
 } from "../controllers/chat.controllers";
-import authenticate from "../middleware/auth.middleware";
 
 const router = Router();
-
-router.use(authenticate);
 
 // Chat routes
 router.get("/", getAllChats);

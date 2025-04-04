@@ -31,6 +31,7 @@ const chatCommonAggregation = (): PipelineStage[] => {
   ];
 };
 
+// Dele Messages
 const deleteCascadeChatMessages = async (chatId: string): Promise<void> => {
   const messages: MessageType[] = await ChatMessage.find({
     chat: new Types.ObjectId(chatId),
@@ -51,6 +52,7 @@ const deleteCascadeChatMessages = async (chatId: string): Promise<void> => {
   });
 };
 
+// Get Chat By Id
 const getChatById = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
 
@@ -71,6 +73,7 @@ const getChatById = async (req: Request, res: Response): Promise<void> => {
   res.status(200).json(new ApiResponse(200, chat, "Chat fetched successfully"));
 };
 
+// Create or Get A One-on-One Chat
 const createOrGetAOneOnOneChat = async (
   req: Request,
   res: Response
@@ -151,6 +154,7 @@ const createOrGetAOneOnOneChat = async (
   return;
 };
 
+// Create A Group Chat
 const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { name, participants } = (req as CreateChatRequest).body;
   if (
@@ -223,6 +227,7 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   return;
 };
 
+// Get Chat Details
 const getGroupChatDetails = async (
   req: Request,
   res: Response
@@ -249,6 +254,7 @@ const getGroupChatDetails = async (
   return;
 };
 
+// Rename Group
 const renameGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
   const { name } = req.body;
@@ -307,6 +313,7 @@ const renameGroupChat = async (req: Request, res: Response): Promise<void> => {
   return;
 };
 
+// Delete Group
 const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
 
@@ -348,7 +355,7 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
     emitSocketEvent<ChatType>(
       req,
       participant.userId,
-      ChatEventEnum.LEAVE_CHAT_EVENT,
+      ChatEventEnum.DELETE_CHAT_EVENT,
       chat
     );
   });
@@ -359,6 +366,7 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
   return;
 };
 
+// Leave Group Chat
 const leaveGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
   const groupChat = await Chat.findOne({
@@ -393,7 +401,7 @@ const leaveGroupChat = async (req: Request, res: Response): Promise<void> => {
     throw new ApiError(404, "Cannot leave group.");
   }
 
-  const chat = await Chat.aggregate([
+  const chat: ChatType[] = await Chat.aggregate([
     {
       $match: {
         _id: updatedChat._id,
@@ -408,12 +416,23 @@ const leaveGroupChat = async (req: Request, res: Response): Promise<void> => {
     throw new ApiError(500, "Internal server error");
   }
 
+  payload.participants.forEach((participant) => {
+    if (participant.userId === (req as AuthenticatedRequest).user.id) return;
+    emitSocketEvent<ChatType>(
+      req,
+      participant.userId,
+      ChatEventEnum.LEAVE_GROUP_EVENT,
+      payload
+    );
+  });
+
   res
     .status(200)
     .json(new ApiResponse(200, payload, "Left a group successfully"));
   return;
 };
 
+// Delete One-on-One Chat
 const deleteOneOnOneChat = async (
   req: Request,
   res: Response
@@ -450,7 +469,7 @@ const deleteOneOnOneChat = async (
   emitSocketEvent<ChatType>(
     req,
     otherParticipant.userId,
-    ChatEventEnum.LEAVE_CHAT_EVENT,
+    ChatEventEnum.DELETE_CHAT_EVENT,
     payload
   );
 
@@ -458,6 +477,7 @@ const deleteOneOnOneChat = async (
   return;
 };
 
+// Add to Group
 const addNewParticipantInGroupChat = async (
   req: Request,
   res: Response
@@ -509,7 +529,7 @@ const addNewParticipantInGroupChat = async (
     throw new ApiError(404, "Cannot join group.");
   }
 
-  const chat = await Chat.aggregate([
+  const chat: ChatType[] = await Chat.aggregate([
     {
       $match: {
         _id: updatedChat._id,
@@ -523,7 +543,12 @@ const addNewParticipantInGroupChat = async (
   if (!payload) {
     throw new ApiError(500, "Internal server error");
   }
-  emitSocketEvent(req, participantId, ChatEventEnum.NEW_CHAT_EVENT, payload);
+  emitSocketEvent<ChatType>(
+    req,
+    participantId,
+    ChatEventEnum.NEW_CHAT_EVENT,
+    payload
+  );
 
   res
     .status(200)
@@ -531,6 +556,7 @@ const addNewParticipantInGroupChat = async (
   return;
 };
 
+// Remove From Group
 const removeParticipantFromGroupChat = async (
   req: Request,
   res: Response
@@ -589,7 +615,7 @@ const removeParticipantFromGroupChat = async (
     throw new ApiError(500, "Internal server error");
   }
 
-  emitSocketEvent(req, participantId, ChatEventEnum.LEAVE_CHAT_EVENT, payload);
+  emitSocketEvent(req, participantId, ChatEventEnum.DELETE_CHAT_EVENT, payload);
 
   res
     .status(200)
@@ -597,8 +623,8 @@ const removeParticipantFromGroupChat = async (
   return;
 };
 
+// Get All Chats
 const getAllChats = async (req: Request, res: Response): Promise<void> => {
-
   const chats = await Chat.aggregate([
     {
       $match: {
@@ -626,6 +652,7 @@ const getAllChats = async (req: Request, res: Response): Promise<void> => {
     );
 };
 
+// Pin Messages
 const pinMessage = async (req: Request, res: Response): Promise<void> => {
   const { chatId, messageId } = req.params;
   const chat = await Chat.findById(chatId);
@@ -644,11 +671,23 @@ const pinMessage = async (req: Request, res: Response): Promise<void> => {
     { new: true }
   );
 
+  if (!updatedChat) throw new ApiError(400, "Error Pinning Message");
+
+  updatedChat.participants.forEach((participant) => {
+    if (participant.userId === (req as AuthenticatedRequest).user.id) return;
+    emitSocketEvent(
+      req,
+      participant.userId,
+      ChatEventEnum.MESSAGE_PIN_EVENT,
+      updatedChat
+    );
+  });
   res
     .status(200)
     .json(new ApiResponse(200, updatedChat, "Message pinned successfully"));
 };
 
+// Unpin Messages
 const unpinMessage = async (req: Request, res: Response): Promise<void> => {
   const { chatId, messageId } = req.params;
   const chat = await Chat.findById(chatId);
@@ -670,11 +709,22 @@ const unpinMessage = async (req: Request, res: Response): Promise<void> => {
   if (!updatedChat) {
     throw new ApiError(400, "No pinned message found");
   }
+
+  updatedChat.participants.forEach((participant) => {
+    if (participant.userId === (req as AuthenticatedRequest).user.id) return;
+    emitSocketEvent(
+      req,
+      participant.userId,
+      ChatEventEnum.MESSAGE_PIN_EVENT,
+      updatedChat
+    );
+  });
   res
     .status(200)
     .json(new ApiResponse(200, updatedChat, "Message unpinned successfully"));
 };
 
+// Delete Messages
 const deleteChatForMe = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
   const userId = (req as AuthenticatedRequest).user.id;
