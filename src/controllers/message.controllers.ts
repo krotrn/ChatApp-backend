@@ -3,7 +3,7 @@ import { PipelineStage, Types } from "mongoose";
 import { Chat } from "../models/chat.models";
 import ApiError from "../utils/ApiError";
 import { AuthenticatedRequest } from "../types/request.type";
-import { AttachmentType, MessageType } from "../types/message.type";
+import { AttachmentType, MessageType, ReactionType } from "../types/message.type";
 import { ChatMessage } from "../models/message.models";
 import { ApiResponse } from "../utils/ApiResponse";
 import {
@@ -13,7 +13,7 @@ import {
 } from "../utils/FileOperations";
 import { emitSocketEvent } from "../socket";
 import { ChatEventEnum } from "../utils/constants";
-import { ChatType } from "../types/chat.type";
+import { ChatParticipant, ChatType } from "../types/chat.type";
 import { validateUser } from "../utils/userHelper";
 import { resilientApiCall } from "../utils/apiRetry";
 
@@ -34,6 +34,19 @@ const chatMessageCommonAggregation = (): PipelineStage[] => {
         updatedAt: 1,
       },
     },
+    {
+      $addFields: {
+        _id: { $toString: "$_id" },
+        chatId: { $toString: "$chatId" },
+        replyTo: {
+          $cond: {
+            if: { $ne: ["$replyTo", null] },
+            then: { $toString: "$replyTo" },
+            else: null,
+          },
+        },
+      },
+    }
   ];
 };
 
@@ -47,7 +60,7 @@ const getAllMessages = async (req: Request, res: Response): Promise<void> => {
 
   if (
     !selectedChat.participants.some(
-      (participant) =>
+      (participant: ChatParticipant) =>
         participant.userId === (req as AuthenticatedRequest).user.id
     )
   ) {
@@ -57,7 +70,7 @@ const getAllMessages = async (req: Request, res: Response): Promise<void> => {
   const messages: MessageType[] = await ChatMessage.aggregate([
     {
       $match: {
-        chat: new Types.ObjectId(chatId),
+        chatId: new Types.ObjectId(chatId),
       },
     },
     ...chatMessageCommonAggregation(),
@@ -113,7 +126,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
     attachments = req.files;
   }
   const messageFiles: AttachmentType[] = attachments.map((attachment) => ({
-    url: getStaticFilePath(req, attachment.fieldname),
+    url: getStaticFilePath(req, attachment.filename),
     localPath: getLocalPath(attachment.filename),
   }));
 
@@ -121,7 +134,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
     sender: (req as AuthenticatedRequest).user.id,
     receivers,
     content: content || "",
-    chat: new Types.ObjectId(chatId),
+    chatId: new Types.ObjectId(chatId),
     attachments: messageFiles,
   });
   const updateChat = await Chat.findByIdAndUpdate(
@@ -148,7 +161,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
       receivedMessage
     );
   } else {
-    updateChat.participants.forEach((participant) => {
+    updateChat.participants.forEach((participant: ChatParticipant) => {
       if (participant.userId === (req as AuthenticatedRequest).user.id) return;
       emitSocketEvent(
         req,
@@ -201,7 +214,7 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
     chat.lastMessage?.toString() === (message._id as Types.ObjectId).toString()
   ) {
     const lastMessage = await ChatMessage.findOne(
-      { chat: chatId },
+      { chatId },
       {},
       { sort: { createdAt: -1 } }
     );
@@ -239,7 +252,7 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
   }
 
   const receivers = chat.participants.filter(
-    (participant) =>
+    (participant: ChatParticipant) =>
       participant.userId !== (req as AuthenticatedRequest).user.id
   );
   if (!receivers.length) {
@@ -250,15 +263,15 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
     sender: (req as AuthenticatedRequest).user.id,
     receivers,
     content,
-    chat: new Types.ObjectId(chatId),
+    chatId: new Types.ObjectId(chatId),
     replyTo: messageId,
     attachments: [],
   });
 
-  chat.lastMessage = reply._id as Types.ObjectId;
+  chat.lastMessage = reply._id;
   await chat.save();
 
-  chat.participants.forEach((participant) => {
+  chat.participants.forEach((participant: ChatParticipant) => {
     if (participant.userId === (req as AuthenticatedRequest).user.id) return;
     emitSocketEvent(
       req,
@@ -291,7 +304,7 @@ const updateReaction = async (req: Request, res: Response): Promise<void> => {
   }
 
   const reactionIndex = message.reactions.findIndex(
-    (reaction) => reaction.userId === (req as AuthenticatedRequest).user.id
+    (reaction: ReactionType) => reaction.userId === (req as AuthenticatedRequest).user.id
   );
 
   if (reactionIndex !== -1) {
@@ -304,12 +317,13 @@ const updateReaction = async (req: Request, res: Response): Promise<void> => {
     message.reactions.push({
       userId: (req as AuthenticatedRequest).user.id,
       emoji,
+      timestamp: new Date()
     });
   }
   await message.save();
 
   chat.participants.forEach((participant) => {
-    if (participant.userId !== (req as AuthenticatedRequest).user.id) return;
+    if (participant.userId === (req as AuthenticatedRequest).user.id) return;
     emitSocketEvent(
       req,
       participant.userId,

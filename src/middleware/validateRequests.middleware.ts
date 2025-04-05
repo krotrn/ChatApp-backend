@@ -1,19 +1,26 @@
-import { Response, NextFunction } from 'express';
-import { CreateChatRequest } from '../types/request.type';
 import ApiError  from '../utils/ApiError';
+import axios from 'axios';
 
-export const validateCreateChatRequest = (
-  req: CreateChatRequest,
-  res: Response,
-  next: NextFunction
-): void => {
-  const {name, participants} = req.body;
-  
-  if (!participants || !Array.isArray(participants) || participants.length === 0) {
-    return next(new ApiError(400, 'Invalid request: "participants" must be a non-empty array'));
+export const validateUser = async (userId: string): Promise<boolean> => {
+  try {
+    const { data } = await axios.get(
+      `${process.env.CLIENT_URL}/api/v1/internal/validate/${userId}`,
+      {
+        headers: { "x-internal-api-key": process.env.INTERNAL_API_KEY },
+        timeout: 3000,
+      }
+    );
+    if (!data.success) {
+      throw new ApiError(500, "Validation service error");
+    }
+    return data.valid;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.error || "User validation failed"
+      );
+    }
+    throw new ApiError(500, "Internal server error during validation");
   }
-  if (!name) {
-    return next(new ApiError(400, 'Invalid request: "name" is required'));
-  }
-  next();
 };

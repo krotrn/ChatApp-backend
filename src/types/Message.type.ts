@@ -14,17 +14,18 @@ export enum StatusEnum {
 export interface ReactionType {
   userId: string;
   emoji: string;
+  timestamp: Date;
 }
 
 export interface MessageType extends Document {
   sender: string;
-  receivers: [string];
-  chat: Types.ObjectId;
+  receivers: string[];
+  chatId: Types.ObjectId;
   content: string;
-  attachments: [AttachmentType];
+  attachments: AttachmentType[];
   status: StatusEnum;
-  reactions: [ReactionType];
-  edited: { isEdited: boolean; editedAt: Date; previousContent: [string]; };
+  reactions: ReactionType[];
+  edited: { isEdited: boolean; editedAt: Date; previousContent: string[]; };
   isDeleted: boolean;
   replyTo: Types.ObjectId;
 }

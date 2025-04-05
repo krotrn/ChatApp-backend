@@ -22,3 +22,8 @@ export interface ChatType extends mongoose.Document {
     customePermissions?: unknown;
   };
 }
+
+export interface DeletedForEntry {
+  userId: string;
+  deletedAt: Date;
+}

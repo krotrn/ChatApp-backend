@@ -62,7 +62,12 @@ const emitSocketEvent = <T>(
   event: string,
   payload: T
 ) => {
-  req.app.get("io").to(roomId).emit(event, payload);
+  const io = req.app.get("io") as Server;
+  if (!io) {
+    console.error("Socket.io instance not found");
+    return;
+  }
+  io.to(roomId).emit(event, payload);
 };
 
 export { initializeSocketIO, emitSocketEvent };
