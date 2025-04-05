@@ -3,8 +3,14 @@ import { Chat } from "../models/chat.models";
 
 const router = Router();
 
+interface BodyPayload {
+  userId: string;
+  action: "update" | "delete";
+  data: { name: string, avatarUrl: string; };
+}
+
 router.post("/", async (req: Request, res: Response) => {
-  const { userId, action, data } = req.body;
+  const { userId, action, data }: BodyPayload = req.body;
   try {
     if (action === "delete") {
       await Chat.updateMany(

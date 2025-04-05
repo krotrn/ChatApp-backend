@@ -75,7 +75,7 @@ const getAllMessages = async (req: Request, res: Response): Promise<void> => {
 
 const sendMessage = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
-  const { content } = req.body;
+  const { content }: { content: string; } = req.body;
   const hasAttachments =
     req.files &&
     (Array.isArray(req.files)
@@ -272,11 +272,17 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
 };
 
 const updateReaction = async (req: Request, res: Response): Promise<void> => {
-  const { messageId } = req.params;
-  const { emoji } = req.body;
+  const { chatId, messageId } = req.params;
+  const { emoji }: { emoji: string; } = req.body;
 
   if (!emoji) {
     throw new ApiError(400, "Emoji is required for a reaction");
+  }
+
+  const chat: ChatType | null = await Chat.findById(chatId);
+
+  if (!chat) {
+    throw new ApiError(404, "Chat not found");
   }
 
   const message = await ChatMessage.findById(messageId);
@@ -300,8 +306,18 @@ const updateReaction = async (req: Request, res: Response): Promise<void> => {
       emoji,
     });
   }
-
   await message.save();
+
+  chat.participants.forEach((participant) => {
+    if (participant.userId !== (req as AuthenticatedRequest).user.id) return;
+    emitSocketEvent(
+      req,
+      participant.userId,
+      ChatEventEnum.MESSAGE_REACTION_EVENT,
+      message
+    );
+  });
+
   res
     .status(200)
     .json(new ApiResponse(200, message, "Reaction updated successfully"));

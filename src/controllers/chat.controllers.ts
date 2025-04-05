@@ -5,7 +5,7 @@ import { Request, Response } from "express";
 import { Chat } from "../models/chat.models";
 import ApiError from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
-import { ChatType } from "../types/chat.type";
+import { ChatParticipant, ChatType } from "../types/chat.type";
 import { AuthenticatedRequest, CreateChatRequest } from "../types/request.type";
 import { emitSocketEvent } from "../socket";
 import { ChatEventEnum } from "../utils/constants";
@@ -78,7 +78,7 @@ const createOrGetAOneOnOneChat = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { participants, name } = req.body;
+  const { participants, name }: { participants: ChatParticipant[], name: string; } = req.body;
   const currentUser = (req as AuthenticatedRequest).user;
 
   const otherParticipant = participants[0];
@@ -156,7 +156,7 @@ const createOrGetAOneOnOneChat = async (
 
 // Create A Group Chat
 const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
-  const { name, participants } = (req as CreateChatRequest).body;
+  const { name, participants }: { participants: ChatParticipant[], name: string; } = req.body;
   if (
     participants.some(
       (participant) =>
@@ -257,7 +257,7 @@ const getGroupChatDetails = async (
 // Rename Group
 const renameGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
-  const { name } = req.body;
+  const { name }: { name: string; } = req.body;
   const groupChat = await Chat.findOne({
     _id: new Types.ObjectId(chatId),
     type: "group",
@@ -663,7 +663,7 @@ const pinMessage = async (req: Request, res: Response): Promise<void> => {
     throw new ApiError(403, "Only admin can pin messages");
   }
 
-  const updatedChat = await Chat.findByIdAndUpdate(
+  const updatedChat: ChatType | null = await Chat.findByIdAndUpdate(
     chatId,
     {
       $addToSet: { "metadata.pinnedMessage": new Types.ObjectId(messageId) },
