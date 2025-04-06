@@ -4,12 +4,12 @@ This repository, **Chat_Backend**, contains the backend service for a real-time 
 
 ## Features ✨
 
-- **Chat Management**: Create, retrieve, update, and delete chats (direct and group).
-- **Message Management**: Send, retrieve, delete, and reply to messages within chats.
-- **Real-time Communication**: Utilizes Socket.IO for events like new messages, typing indicators, and chat updates.
-- **Authentication and Authorization**: Integrates with CLIENT_REPO for user validation using JWT tokens and an internal API key.
-- **File Handling**: Supports message attachments via Multer.
-- **Error Handling and Validation**: Custom error handling and request validation middleware.
+- **Chat Management**: Create, retrieve, update, and delete chats (direct and group)
+- **Message Management**: Send, retrieve, delete, and reply to messages within chats
+- **Real-time Communication**: Utilizes Socket.IO for events like new messages, typing indicators, and chat updates
+- **Authentication and Authorization**: Integrates with CLIENT_REPO for user validation using JWT tokens and an internal API key
+- **File Handling**: Supports message attachments via Multer
+- **Error Handling and Validation**: Custom error handling and request validation middleware
 
 ## Project Overview 🔍
 
@@ -66,48 +66,48 @@ Follow these steps to set up and run the project locally:
 
 ## Project Structure 📂
 
-Here’s an overview of the key directories and files:
+Here's an overview of the key directories and files:
 
-- **`src/controllers/`**: Logic for chat and message operations.
-- **`src/models/`**: Mongoose schemas for chats and messages.
-- **`src/routes/`**: Express routes for API endpoints.
-- **`src/socket/`**: Socket.IO connection and event handling.
-- **`src/types/`**: TypeScript type definitions.
-- **`src/utils/`**: Utility functions (e.g., `ApiResponse`, `FileOperations`).
+- **`src/controllers/`**: Logic for chat and message operations
+- **`src/models/`**: Mongoose schemas for chats and messages
+- **`src/routes/`**: Express routes for API endpoints
+- **`src/socket/`**: Socket.IO connection and event handling
+- **`src/types/`**: TypeScript type definitions
+- **`src/utils/`**: Utility functions (e.g., `ApiResponse`, `FileOperations`)
 - **`src/middleware/`**: Custom middleware for authentication, file uploads, etc.
-- **`src/database/db.ts`**: MongoDB connection setup.
-- **`.env.example`**: Template for environment variables.
-- **`package.json`**: Project dependencies and scripts.
+- **`src/database/db.ts`**: MongoDB connection setup
+- **`.env.example`**: Template for environment variables
+- **`package.json`**: Project dependencies and scripts
 
 ## API Endpoints 🌐
 
 ### Chat Routes
-- **`GET /api/v1/chats`**: Retrieve all chats for the authenticated user.
-- **`POST /api/v1/chats/chat`**: Create or get a one-on-one chat.
-- **`POST /api/v1/chats/group`**: Create a group chat.
-- **`GET /api/v1/chats/group/:chatId`**: Get group chat details.
-- **`PATCH /api/v1/chats/group/:chatId`**: Rename a group chat.
-- **`DELETE /api/v1/chats/group/:chatId`**: Delete a group chat.
+- **`GET /api/v1/chats`**: Retrieve all chats for the authenticated user
+- **`POST /api/v1/chats/chat`**: Create or get a one-on-one chat
+- **`POST /api/v1/chats/group`**: Create a group chat
+- **`GET /api/v1/chats/group/:chatId`**: Get group chat details
+- **`PATCH /api/v1/chats/group/:chatId`**: Rename a group chat
+- **`DELETE /api/v1/chats/group/:chatId`**: Delete a group chat
 
 ### Message Routes
-- **`GET /api/v1/messages/:chatId`**: Get all messages in a chat.
-- **`POST /api/v1/messages/:chatId`**: Send a message (supports attachments).
-- **`DELETE /api/v1/messages/:chatId/:messageId`**: Delete a message.
+- **`GET /api/v1/messages/:chatId`**: Get all messages in a chat
+- **`POST /api/v1/messages/:chatId`**: Send a message (supports attachments)
+- **`DELETE /api/v1/messages/:chatId/:messageId`**: Delete a message
 
-for more information refer to [API Documentation](API_DOC.md)
+For more information, refer to [API Documentation](API_DOC.md)
 
-*All routes require authentication via JWT tokens from CLIENTREPO.*
+*All routes require authentication via JWT tokens from CLIENT_REPO.*
 
 ## Real-time Events 🔄
 
 Socket.IO is used for real-time communication. Key events include:
 
-- **`connected`**: User connects to the server.
-- **`disconnect`**: User disconnects.
-- **`joinChat`**: User joins a chat room.
-- **`messageReceived`**: New message is sent.
-- **`typing`**: User is typing.
-- **`messageDeleted`**: Message is deleted.
+- **`connected`**: User connects to the server
+- **`disconnect`**: User disconnects
+- **`joinChat`**: User joins a chat room
+- **`messageReceived`**: New message is sent
+- **`typing`**: User is typing
+- **`messageDeleted`**: Message is deleted
 
 See `src/utils/constants.ts` for the full list of events.
 
@@ -115,14 +115,14 @@ See `src/utils/constants.ts` for the full list of events.
 
 This service relies on **CLIENT_REPO** for user-related operations:
 
-- **User Validation**: Before chat operations, Chat_Backend calls CLIENT_REPO’s internal API (`/api/v1/internal/validate/:userId`) using the `INTERNAL_API_KEY`.
-- **Authentication**: JWT tokens issued by CLIENT_REPO are validated using `ACCESS_TOKEN_SECRET`.
+- **User Validation**: Before chat operations, Chat_Backend calls CLIENT_REPO's internal API (`/api/v1/internal/validate/:userId`) using the `INTERNAL_API_KEY`
+- **Authentication**: JWT tokens issued by CLIENT_REPO are validated using `ACCESS_TOKEN_SECRET`
 
 Ensure CLIENT_REPO is running and `CLIENT_API_URL` is set correctly in `.env`.
 
 ## Database 🗄️
 
-- **MongoDB**: Stores chats and messages (no user data).
+- **MongoDB**: Stores chats and messages (no user data)
 
 Set up MongoDB instances and update `.env` with their connection URIs.
 
@@ -147,7 +147,7 @@ To deploy the application:
    ```
 
 2. **Set Up Environment Variables**:
-   - Configure `.env` in your deployment platform (e.g., Heroku, Vercel, AWS).
+   - Configure `.env` in your deployment platform (e.g., Heroku, Vercel, AWS)
    - Example:
      ```
      PORT=5000
@@ -164,14 +164,14 @@ To deploy the application:
    ```
 
 4. **Database and Services**:
-   - Use cloud services like MongoDB Atlas.
-   - Ensure CLIENT_REPO is deployed and accessible.
+   - Use cloud services like MongoDB Atlas
+   - Ensure CLIENT_REPO is deployed and accessible
 
 ## Contributing 🤝
 
 Contributions are welcome! Follow these steps:
 
-1. Fork the repository.
+1. Fork the repository
 2. Create a feature or bugfix branch:
    ```bash
    git checkout -b feature/your-feature-name
@@ -184,7 +184,7 @@ Contributions are welcome! Follow these steps:
    ```bash
    git push origin feature/your-feature-name
    ```
-5. Submit a pull request.
+5. Submit a pull request
 
 Please adhere to the code style enforced by ESLint.
 
