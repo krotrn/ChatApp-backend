@@ -126,8 +126,10 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
     attachments = req.files;
   }
   const messageFiles: AttachmentType[] = attachments.map((attachment) => ({
+    name: attachment.filename,
     url: getStaticFilePath(req, attachment.filename),
     localPath: getLocalPath(attachment.filename),
+    type: attachment.mimetype || "application/octet-stream"
   }));
 
   const message: MessageType = await ChatMessage.create({

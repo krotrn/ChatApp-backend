@@ -29,6 +29,10 @@ const chatMessageSchema = new Schema(
     attachments: {
       type: [
         {
+          name: {
+            type: String,
+            required:true,
+          },
           url: String,
           localPath: String,
           status: {
@@ -36,6 +40,10 @@ const chatMessageSchema = new Schema(
             enum: Object.values(StatusEnum),
             default: StatusEnum.sent,
           },
+          type: {
+            type: String,
+            required:true,
+          }
         },
       ],
       default: [],
