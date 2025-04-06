@@ -12,34 +12,49 @@ import { ChatEventEnum } from "../utils/constants";
 import { AttachmentType, MessageType } from "../types/message.type";
 import { validateUser } from "../utils/userHelper";
 import { resilientApiCall } from "../utils/apiRetry";
+import { chatMessageCommonAggregation } from "./message.controllers";
 
 const chatCommonAggregation = (): PipelineStage[] => {
   return [
     {
       $lookup: {
         from: "chatmessages",
-        localField: "lastMessage",
-        foreignField: "_id",
-        as: "lastMessage",
-      },
+        let: { lastMessageId: "$lastMessage" },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ["$_id", "$$lastMessageId"] }
+            }
+          },
+          ...chatMessageCommonAggregation()
+        ],
+        as: "lastMessage"
+      }
+    },
+    {
+      $lookup: {
+        from: "chatmessages",
+        let: { chatId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ["$chatId", "$$chatId"] }
+            }
+          },
+          ...chatMessageCommonAggregation(), 
+          {
+            $sort: { createdAt: -1 }
+          }
+        ],
+        as: "messages"
+      }
     },
     {
       $addFields: {
         _id: { $toString: "$_id" },
-        lastMessage: { $arrayElemAt: ["$lastMessage", 0] },
-      },
-    },
-    {
-      $addFields: {
-        "lastMessage._id": {
-          $cond: {
-            if: { $ne: ["$lastMessage", null] },
-            then: { $toString: "$lastMessage._id" },
-            else: null
-          }
-        }
-      },
-    },
+        lastMessage: { $arrayElemAt: ["$lastMessage", 0] }
+      }
+    }
   ];
 };
 

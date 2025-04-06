@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PipelineStage, Types } from "mongoose";
+import { Types } from "mongoose";
 import { Chat } from "../models/chat.models";
 import ApiError from "../utils/ApiError";
 import { AuthenticatedRequest } from "../types/request.type";
@@ -17,7 +17,7 @@ import { ChatParticipant, ChatType } from "../types/chat.type";
 import { validateUser } from "../utils/userHelper";
 import { resilientApiCall } from "../utils/apiRetry";
 
-const chatMessageCommonAggregation = (): PipelineStage[] => {
+export const chatMessageCommonAggregation = () => {
   return [
     {
       $project: {
