@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon --watch \"src/**/*.ts\" --exec \"npx ts-node\" src/index.ts",
+    "build": "tsc",
     "lint": "eslint \"src/**/*.{ts,tsx}\""
   },
   "keywords": [],
