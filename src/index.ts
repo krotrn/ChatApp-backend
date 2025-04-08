@@ -6,11 +6,14 @@ import rateLimit from "express-rate-limit";
 import requestIp from "request-ip";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
+import morgan from "morgan";
 
 dotenv.config();
 
 const app = express();
 const httpServer = http.createServer(app);
+
+app.use(morgan('dev'));
 
 const CLIENT_URL = process.env.CLIENT_URL || "*";
 const allowedOrigins = CLIENT_URL === "*" ? "*" : CLIENT_URL.split(",").map(url => url.trim());
