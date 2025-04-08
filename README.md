@@ -49,7 +49,6 @@ Follow these steps to set up and run the project locally:
      MONGODB_URI=<your-mongodb-connection-string>
      ACCESS_TOKEN_SECRET=<jwt-secret-key>
      CLIENT_URL=<allowed-cors-origins>
-     CLIENT_API_URL=<api-base-url>
      INTERNAL_API_KEY=<key-for-CLIENT_REPO-communication>
      ```
 
@@ -118,7 +117,6 @@ This service relies on **CLIENT_REPO** for user-related operations:
 - **User Validation**: Before chat operations, Chat_Backend calls CLIENT_REPO's internal API (`/api/v1/internal/validate/:userId`) using the `INTERNAL_API_KEY`
 - **Authentication**: JWT tokens issued by CLIENT_REPO are validated using `ACCESS_TOKEN_SECRET`
 
-Ensure CLIENT_REPO is running and `CLIENT_API_URL` is set correctly in `.env`.
 
 ## Database 🗄️
 
@@ -154,7 +152,6 @@ To deploy the application:
      MONGODB_URI=mongodb://<production-uri>
      ACCESS_TOKEN_SECRET=<secret>
      CLIENT_URL=https://your-frontend.com
-     CLIENT_API_URL=https://CLIENT_REPO.yourdomain.com
      INTERNAL_API_KEY=<key>
      ```
 
