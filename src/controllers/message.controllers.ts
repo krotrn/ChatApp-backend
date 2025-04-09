@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 import { Chat } from "../models/chat.models";
 import ApiError from "../utils/ApiError";
 import { AuthenticatedRequest } from "../types/request.type";
-import { AttachmentType, MessageType, ReactionType } from "../types/message.type";
+import { AttachmentType, MessageType, ReactionType, StatusEnum, ChatParticipant } from "../types";
 import { ChatMessage } from "../models/message.models";
 import { ApiResponse } from "../utils/ApiResponse";
 import {
@@ -13,7 +13,7 @@ import {
 } from "../utils/FileOperations";
 import { emitSocketEvent } from "../socket";
 import { ChatEventEnum } from "../utils/constants";
-import { ChatParticipant, ChatType } from "../types/chat.type";
+import { ChatType } from "../types/chat.type";
 import { validateUser } from "../utils/userHelper";
 import { resilientApiCall } from "../utils/apiRetry";
 
@@ -141,7 +141,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
   });
   const updateChat = await Chat.findByIdAndUpdate(
     chatId,
-    { $set: { lastMessage: message._id } },
+    { $set: { lastMessage: message._id, status: StatusEnum.sent } },
     { new: true }
   );
 
