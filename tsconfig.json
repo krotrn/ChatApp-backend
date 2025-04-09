@@ -3,7 +3,7 @@
     "target": "ES2020",
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "noEmit": true,
+    "noEmit": false,
     "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
@@ -16,16 +16,9 @@
     "sourceMap": true,
     "declaration": true,
     "noImplicitAny": true,
-    "baseUrl": "./src",
-    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["*"],
-      "@types/*": ["types/*"],
-      "@utils/*": ["utils/*"],
-      "@controllers/*": ["controllers/*"],
-      "@models/*": ["models/*"],
-      "@middleware/*": ["middleware/*"],
-      "@database/*": ["database/*"]
+      "*": ["node_modules/*", "src/types/*"]
     }
   },
   "include": [
