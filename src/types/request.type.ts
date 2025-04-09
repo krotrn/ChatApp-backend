@@ -1,7 +1,7 @@
-import { Request } from "express";
-import { ParamsDictionary } from "express-serve-static-core";
-import { ParsedQs } from "qs";
-import { ChatParticipant } from "./chat.type";
+import type { Request } from "express";
+import type { ParamsDictionary } from "express-serve-static-core";
+import type { ParsedQs } from "qs";
+import type { ChatParticipant } from "./chat.type";
 
 export interface AuthenticatedRequest<
   TBody = unknown,

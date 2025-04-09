@@ -1,21 +1,24 @@
-import { Request, Response } from "express";
-import { Types } from "mongoose";
-import { Chat } from "../models/chat.models";
-import ApiError from "../utils/ApiError";
-import { AuthenticatedRequest } from "../types/request.type";
-import { AttachmentType, MessageType, ReactionType, StatusEnum, ChatParticipant } from "../types";
-import { ChatMessage } from "../models/message.models";
-import { ApiResponse } from "../utils/ApiResponse";
+import { Chat } from "@/models/chat.models";
+import { ChatMessage } from "@/models/message.models";
 import {
-  getLocalPath,
-  getStaticFilePath,
-  removeLocalFile,
-} from "../utils/FileOperations";
-import { emitSocketEvent } from "../socket";
-import { ChatEventEnum } from "../utils/constants";
-import { ChatType } from "../types/chat.type";
-import { validateUser } from "../utils/userHelper";
-import { resilientApiCall } from "../utils/apiRetry";
+  AttachmentType,
+  AuthenticatedRequest,
+  ChatParticipant,
+  ChatType,
+  MessageType,
+  StatusEnum,
+  ReactionType,
+} from "@/types";
+import ApiError from "@/utils/ApiError";
+import { ApiResponse } from "@/utils/ApiResponse";
+import { getLocalPath, removeLocalFile } from "@/utils/fileOperations";
+import { getStaticFilePath } from "@/utils/fileOperations";
+import { resilientApiCall } from "@/utils/apiRetry";
+import { validateUser } from "@/utils/userHelper";
+import type { Request, Response } from "express";
+import { Types } from "mongoose";
+import { emitSocketEvent } from "@/socket";
+import { ChatEventEnum } from "@/utils/constants";
 
 export const chatMessageCommonAggregation = () => {
   return [
@@ -46,7 +49,7 @@ export const chatMessageCommonAggregation = () => {
           },
         },
       },
-    }
+    },
   ];
 };
 
@@ -88,7 +91,7 @@ const getAllMessages = async (req: Request, res: Response): Promise<void> => {
 
 const sendMessage = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
-  const { content }: { content: string; } = req.body;
+  const { content }: { content: string } = req.body;
   const hasAttachments =
     req.files &&
     (Array.isArray(req.files)
@@ -129,7 +132,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
     name: attachment.filename,
     url: getStaticFilePath(req, attachment.filename),
     localPath: getLocalPath(attachment.filename),
-    type: attachment.mimetype || "application/octet-stream"
+    type: attachment.mimetype || "application/octet-stream",
   }));
 
   const message: MessageType = await ChatMessage.create({
@@ -288,7 +291,7 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
 
 const updateReaction = async (req: Request, res: Response): Promise<void> => {
   const { chatId, messageId } = req.params;
-  const { emoji }: { emoji: string; } = req.body;
+  const { emoji }: { emoji: string } = req.body;
 
   if (!emoji) {
     throw new ApiError(400, "Emoji is required for a reaction");
@@ -306,7 +309,8 @@ const updateReaction = async (req: Request, res: Response): Promise<void> => {
   }
 
   const reactionIndex = message.reactions.findIndex(
-    (reaction: ReactionType) => reaction.userId === (req as AuthenticatedRequest).user.id
+    (reaction: ReactionType) =>
+      reaction.userId === (req as AuthenticatedRequest).user.id
   );
 
   if (reactionIndex !== -1) {
@@ -319,7 +323,7 @@ const updateReaction = async (req: Request, res: Response): Promise<void> => {
     message.reactions.push({
       userId: (req as AuthenticatedRequest).user.id,
       emoji,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
   }
   await message.save();

@@ -1,5 +1,5 @@
 import axios from "axios";
-import ApiError from "../utils/ApiError";
+import ApiError from "@/utils/ApiError";
 
 export const validateUser = async (userId: string): Promise<boolean> => {
   try {

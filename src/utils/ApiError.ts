@@ -5,12 +5,12 @@ interface IApiError extends Error {
   errors: unknown[];
 }
 
-class ApiError extends Error implements IApiError {
+export default class ApiError extends Error implements IApiError {
   statusCode: number;
   data: unknown;
   success: boolean;
   errors: unknown[];
-  
+
   constructor(
     statusCode: number,
     message: string = "Something went wrong",
@@ -31,4 +31,3 @@ class ApiError extends Error implements IApiError {
     }
   }
 }
-export default ApiError;

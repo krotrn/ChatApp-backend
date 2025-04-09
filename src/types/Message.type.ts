@@ -1,4 +1,4 @@
-import { Document, Types } from "mongoose";
+import type { Document, Types } from "mongoose";
 
 export interface AttachmentType {
   url: string;
@@ -25,7 +25,7 @@ export interface MessageType extends Document {
   attachments: AttachmentType[];
   status: StatusEnum;
   reactions: ReactionType[];
-  edited: { isEdited: boolean; editedAt: Date; previousContent: string[]; };
+  edited: { isEdited: boolean; editedAt: Date; previousContent: string[] };
   isDeleted: boolean;
   replyTo: Types.ObjectId;
 }

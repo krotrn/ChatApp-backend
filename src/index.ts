@@ -13,10 +13,11 @@ dotenv.config();
 const app = express();
 const httpServer = http.createServer(app);
 
-app.use(morgan('dev'));
+app.use(morgan("dev"));
 
 const CLIENT_URL = process.env.CLIENT_URL || "*";
-const allowedOrigins = CLIENT_URL === "*" ? "*" : CLIENT_URL.split(",").map(url => url.trim());
+const allowedOrigins =
+  CLIENT_URL === "*" ? "*" : CLIENT_URL.split(",").map((url) => url.trim());
 
 const io = new Server(httpServer, {
   pingTimeout: 60000,
@@ -40,12 +41,7 @@ const limiter = rateLimit({
   max: 5000,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.clientIp || req.ip || "unknown",
-  handler: (_, __, ___, options) => {
-    throw new Error(
-      `Too many requests. You are allowed ${options.limit} requests per ${options.windowMs / 60000} minutes.`
-    );
-  },
+  keyGenerator: (req) => requestIp.getClientIp(req) || "unknown",
 });
 
 app.use(limiter);
@@ -61,7 +57,7 @@ import webhookRouter from "./routes/webhooks.route";
 import connectDB from "./database/db";
 import { errorHandler } from "./middleware/errorHandler.middleware";
 import { initializeSocketIO } from "./socket";
-import authenticate from "./middleware/auth.middleware";
+import { authenticate } from "./middleware/auth.middleware";
 
 initializeSocketIO(io);
 
@@ -76,7 +72,7 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-(async () => {
+(async (): Promise<void> => {
   try {
     await connectDB();
     httpServer.listen(PORT, () => {

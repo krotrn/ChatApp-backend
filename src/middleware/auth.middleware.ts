@@ -1,31 +1,42 @@
-import { Request, Response, NextFunction, RequestHandler } from "express";
+import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import ApiError from "../utils/ApiError";
-import { AuthenticatedRequest } from "../types/request.type";
+import ApiError from "@/utils/ApiError";
+import { DecodedToken } from "@/types";
 
-const authenticate: RequestHandler = (
+interface JwtPayload {
+  id: string;
+  name: string;
+  avatarUrl: string;
+  email: string;
+  username: string;
+  role: string;
+}
+
+declare module "express" {
+  interface Request {
+    user?: DecodedToken;
+  }
+}
+
+export const authenticate = (
   req: Request,
-  _res: Response,
+  res: Response,
   next: NextFunction
 ) => {
-  const token =
-    req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
-
   try {
-    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!) as {
-      id: string;
-      name: string;
-      avatarUrl: string;
-      email: string;
-      username: string;
-      role: string;
-    };
-    (req as AuthenticatedRequest).user = decoded;
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+    req.user = decoded;
     next();
   } catch (error) {
-    console.log(error);
-    next(new ApiError(401, "Invalid or expired token"));
+    if (error instanceof jwt.JsonWebTokenError) {
+      next(new ApiError(401, "Invalid token"));
+    } else {
+      next(error);
+    }
   }
 };
-
-export default authenticate;

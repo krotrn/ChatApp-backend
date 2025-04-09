@@ -1,12 +1,15 @@
-import { Request, Response, Router } from "express";
-import { Chat } from "../models/chat.models";
+import type { Request, Response } from "express";
+import { Router } from "express";
+
+import { Chat } from "@/models/chat.models";
+import ApiError from "@/utils/ApiError";
 
 const router = Router();
 
 interface BodyPayload {
   userId: string;
   action: "update" | "delete";
-  data: { name: string, avatarUrl: string; };
+  data: { name: string; avatarUrl: string };
 }
 
 router.post("/", async (req: Request, res: Response) => {
@@ -32,8 +35,9 @@ router.post("/", async (req: Request, res: Response) => {
     }
     res.status(200).json({ message: "User update processed" });
   } catch (error) {
-    console.error("Webhook processing error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    const apiError = new ApiError(500, "Internal server error");
+    apiError.stack = error instanceof Error ? error.stack : undefined;
+    throw apiError;
   }
 });
 

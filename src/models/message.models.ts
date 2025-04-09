@@ -1,5 +1,6 @@
-import mongoose, { Schema } from "mongoose";
-import { StatusEnum } from "../types/message.type";
+import mongoose, { Schema } from 'mongoose';
+
+import { StatusEnum } from '../types/message.type';
 
 const chatMessageSchema = new Schema(
   {
@@ -17,7 +18,7 @@ const chatMessageSchema = new Schema(
     ],
     chatId: {
       type: Schema.Types.ObjectId,
-      ref: "Chat",
+      ref: 'Chat',
       required: true,
       index: true,
     },
@@ -31,7 +32,7 @@ const chatMessageSchema = new Schema(
         {
           name: {
             type: String,
-            required:true,
+            required: true,
           },
           url: String,
           localPath: String,
@@ -42,8 +43,8 @@ const chatMessageSchema = new Schema(
           },
           type: {
             type: String,
-            required:true,
-          }
+            required: true,
+          },
         },
       ],
       default: [],
@@ -52,7 +53,7 @@ const chatMessageSchema = new Schema(
       {
         userId: String,
         emoji: String,
-        timestamp: Date
+        timestamp: Date,
       },
     ],
     edited: {
@@ -64,7 +65,7 @@ const chatMessageSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    replyToId: { type: Schema.Types.ObjectId, ref: "ChatMessage" },
+    replyToId: { type: Schema.Types.ObjectId, ref: 'ChatMessage' },
   },
   {
     timestamps: true,
@@ -74,5 +75,4 @@ const chatMessageSchema = new Schema(
 chatMessageSchema.index({ chatId: 1, createdAt: -1 });
 
 export const ChatMessage =
-  mongoose.models.ChatMessage ||
-  mongoose.model("ChatMessage", chatMessageSchema);
+  mongoose.models.ChatMessage || mongoose.model('ChatMessage', chatMessageSchema);

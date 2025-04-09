@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "nodemon --watch \"src/**/*.ts\" --exec \"npx ts-node\" src/index.ts",
     "build": "tsc",
-    "lint": "eslint \"src/**/*.{ts,tsx}\""
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
+    "validate": "npm run lint && npm run format:check"
   },
   "keywords": [],
   "author": "",
@@ -31,7 +35,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@eslint/js": "^9.20.0",
+    "@eslint/js": "^9.24.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie": "^0.6.0",
     "@types/cookie-parser": "^1.4.8",
@@ -44,14 +48,16 @@
     "@types/node": "^22.13.4",
     "@types/request-ip": "^0.0.41",
     "@types/socket.io": "^3.0.1",
-    "eslint": "^9.20.1",
-    "eslint-config-prettier": "^8.10.0",
-    "eslint-plugin-import": "^2.26.0",
-    "eslint-plugin-prettier": "^4.2.1",
+    "@typescript-eslint/eslint-plugin": "^8.29.1",
+    "@typescript-eslint/parser": "^8.29.1",
+    "eslint": "^9.24.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-import-resolver-typescript": "^4.3.2",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-prettier": "^5.2.6",
     "globals": "^16.0.0",
     "prettier": "^3.5.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.24.1"
+    "typescript": "^5.8.3"
   }
 }

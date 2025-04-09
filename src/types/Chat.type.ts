@@ -1,10 +1,10 @@
-import mongoose from "mongoose";
+import type mongoose from 'mongoose';
 
 export interface ChatParticipant {
   userId: string;
   name: string;
   avatarUrl: string;
-  role: "member" | "admin";
+  role: 'member' | 'admin';
   joinedAt: Date;
 }
 
@@ -12,9 +12,9 @@ export interface ChatType extends mongoose.Document {
   name: string;
   lastMessage?: mongoose.Types.ObjectId;
   participants: ChatParticipant[];
-  avatar: string | "";
+  avatar: string | '';
   admin?: string;
-  type: "direct" | "group" | "channel";
+  type: 'direct' | 'group' | 'channel';
   createdBy: string;
   deletedFor: [{ user: string; deletedAt: Date }];
   metadata?: {

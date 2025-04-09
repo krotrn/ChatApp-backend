@@ -22,9 +22,9 @@ const fileFilter = (
   file: Express.Multer.File,
   cb: multer.FileFilterCallback
 ) => {
-  const allowedExtensions = ['.jpg', '.png', '.pdf', '.txt'];
+  const allowedExtensions = [".jpg", ".png", ".pdf", ".txt"];
   const ext = path.extname(file.originalname).toLowerCase();
-  
+
   if (!allowedExtensions.includes(ext)) {
     return cb(new ApiError(400, "Invalid file extension"));
   }
@@ -51,7 +51,7 @@ const storage = multer.diskStorage({
       cb(null, filename);
     } catch (error) {
       console.log(error);
-      cb((error as Error), "");
+      cb(error as Error, "");
     }
   },
 });
