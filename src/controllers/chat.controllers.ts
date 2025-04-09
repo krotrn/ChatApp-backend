@@ -1,9 +1,9 @@
 import type { Request, Response } from "express";
 import { startSession, Types, PipelineStage } from "mongoose";
 
-import { Chat } from "@/models/chat.models";
-import { ChatMessage } from "@/models/message.models";
-import { emitSocketEvent } from "@/socket";
+import { Chat } from "../models/chat.models";
+import { ChatMessage } from "../models/message.models";
+import { emitSocketEvent } from "../socket";
 import type {
   ChatParticipant,
   ChatType,
@@ -12,13 +12,13 @@ import type {
   CreateChatRequest,
   AttachmentType,
   MessageType,
-} from "@/types";
-import ApiError from "@/utils/ApiError";
-import { ApiResponse } from "@/utils/ApiResponse";
-import { resilientApiCall } from "@/utils/apiRetry";
-import { ChatEventEnum } from "@/utils/constants";
-import { removeLocalFile } from "@/utils/fileOperations";
-import { validateUser } from "@/utils/userHelper";
+} from "../types";
+import ApiError from "../utils/ApiError";
+import { ApiResponse } from "../utils/ApiResponse";
+import { resilientApiCall } from "../utils/apiRetry";
+import { ChatEventEnum } from "../utils/constants";
+import { removeLocalFile } from "../utils/fileOperations";
+import { validateUser } from "../utils/userHelper";
 
 import { chatMessageCommonAggregation } from "./message.controllers";
 

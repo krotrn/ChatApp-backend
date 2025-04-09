@@ -1,5 +1,5 @@
-import { Chat } from "@/models/chat.models";
-import { ChatMessage } from "@/models/message.models";
+import { Chat } from "../models/chat.models";
+import { ChatMessage } from "../models/message.models";
 import {
   AttachmentType,
   AuthenticatedRequest,
@@ -8,17 +8,17 @@ import {
   MessageType,
   StatusEnum,
   ReactionType,
-} from "@/types";
-import ApiError from "@/utils/ApiError";
-import { ApiResponse } from "@/utils/ApiResponse";
-import { getLocalPath, removeLocalFile } from "@/utils/fileOperations";
-import { getStaticFilePath } from "@/utils/fileOperations";
-import { resilientApiCall } from "@/utils/apiRetry";
-import { validateUser } from "@/utils/userHelper";
+} from "../types";
+import ApiError from "../utils/ApiError";
+import { ApiResponse } from "../utils/ApiResponse";
+import { getLocalPath, removeLocalFile } from "../utils/fileOperations";
+import { getStaticFilePath } from "../utils/fileOperations";
+import { resilientApiCall } from "../utils/apiRetry";
+import { validateUser } from "../utils/userHelper";
 import type { Request, Response } from "express";
 import { Types } from "mongoose";
-import { emitSocketEvent } from "@/socket";
-import { ChatEventEnum } from "@/utils/constants";
+import { emitSocketEvent } from "../socket";
+import { ChatEventEnum } from "../utils/constants";
 
 export const chatMessageCommonAggregation = () => {
   return [

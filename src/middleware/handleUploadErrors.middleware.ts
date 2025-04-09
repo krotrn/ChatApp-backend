@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import multer from "multer";
 
-import ApiError from "@/utils/ApiError";
+import ApiError from "../utils/ApiError";
 
 export const handleUploadErrors = (
   err: unknown,

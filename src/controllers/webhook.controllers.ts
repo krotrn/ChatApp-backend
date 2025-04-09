@@ -1,8 +1,8 @@
 import type { Request, Response } from "express";
 import { Router } from "express";
 
-import { Chat } from "@/models/chat.models";
-import ApiError from "@/utils/ApiError";
+import { Chat } from "../models/chat.models";
+import ApiError from "../utils/ApiError";
 
 const router = Router();
 

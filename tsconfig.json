@@ -16,10 +16,7 @@
     "sourceMap": true,
     "declaration": true,
     "noImplicitAny": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "baseUrl": "."
   },
   "include": [
     "src"

@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import ApiError from "@/utils/ApiError";
-import { DecodedToken } from "@/types";
+import ApiError from "../utils/ApiError";
+import { DecodedToken } from "../types";
 
 interface JwtPayload {
   id: string;
