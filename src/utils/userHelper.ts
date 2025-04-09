@@ -1,10 +1,13 @@
 import axios from "axios";
 import ApiError from "../utils/ApiError";
 
-export const validateUser = async (userId: string): Promise<boolean> => {
+export const validateUser = async (
+  userIds: string[]
+): Promise<Array<{ _id: string; fullName: string; avatar: string }>> => {
   try {
-    const { data } = await axios.get(
-      `${process.env.CLIENT_URL}/api/v1/internal/validate/${userId}`,
+    const { data } = await axios.post(
+      `${process.env.CLIENT_URL}/api/v1/internal/validate/bulk`,
+      { userIds },
       {
         headers: {
           "x-internal-api-key": process.env.INTERNAL_API_KEY,
@@ -17,7 +20,7 @@ export const validateUser = async (userId: string): Promise<boolean> => {
       throw new ApiError(500, "Validation service error");
     }
 
-    return data.valid;
+    return data.users;
   } catch (error) {
     if (axios.isAxiosError(error)) {
       throw new ApiError(

@@ -3,7 +3,7 @@
     "target": "ES2020",
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "noEmit": true,
+    "noEmit": false,
     "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
@@ -16,10 +16,13 @@
     "sourceMap": true,
     "declaration": true,
     "noImplicitAny": true,
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*", "src/types/*"]
+    }
   },
   "include": [
-    "src"
+    "src/**/*"
   ],
   "exclude": ["node_modules", "dist"]
 }

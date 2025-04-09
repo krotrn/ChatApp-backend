@@ -9,6 +9,7 @@ export interface AuthenticatedRequest<
   TQuery = ParsedQs,
 > extends Request<TParams, unknown, TBody, TQuery> {
   user: {
+    _id: string;
     id: string;
     name: string;
     avatarUrl: string;

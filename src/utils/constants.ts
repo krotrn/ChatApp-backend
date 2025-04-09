@@ -1,4 +1,3 @@
-
 export const UserRolesEnum: { ADMIN: "ADMIN"; USER: "USER"; } = {
   ADMIN: "ADMIN",
   USER: "USER",
@@ -21,6 +20,8 @@ export const ChatEventEnum = Object.freeze({
   DELETE_CHAT_EVENT: "chatDeleted",
   MESSAGE_PIN_EVENT: "messagePin",
   MESSAGE_REACTION_EVENT: "messageReaction",
+  NEW_PARTICIPANT_ADDED_EVENT: "newParticipantAdded",
+  PARTICIPANT_LEFT_EVENT: "participantLeft",
 });
 
 export const AvailableChatEvents = Object.values(ChatEventEnum);
