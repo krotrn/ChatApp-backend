@@ -2,13 +2,12 @@ import { Chat } from "../models/chat.models";
 import { ChatMessage } from "../models/message.models";
 import {
   AttachmentType,
-  AuthenticatedRequest,
-  ChatParticipant,
-  ChatType,
   MessageType,
   StatusEnum,
   ReactionType,
-} from "../types";
+} from "../types/message.type";
+import type { ChatParticipant, ChatType } from "../types/chat.type";
+import type { AuthenticatedRequest } from "../types/request.type";
 import ApiError from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { getLocalPath, removeLocalFile } from "../utils/fileOperations";

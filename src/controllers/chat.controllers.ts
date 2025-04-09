@@ -4,12 +4,7 @@ import { startSession, Types, PipelineStage } from "mongoose";
 import { Chat } from "../models/chat.models";
 import { ChatMessage } from "../models/message.models";
 import { emitSocketEvent } from "../socket";
-import type {
-  ChatParticipant,
-  ChatType,
-  DeletedForEntry,
-  AuthenticatedRequest,
-} from "../types";
+
 import ApiError from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { resilientApiCall } from "../utils/apiRetry";
@@ -18,6 +13,9 @@ import { removeLocalFile } from "../utils/fileOperations";
 import { validateUser } from "../utils/userHelper";
 
 import { chatMessageCommonAggregation } from "./message.controllers";
+import type { AuthenticatedRequest } from "../types/request.type";
+import type { ChatParticipant, ChatType, DeletedForEntry } from "../types/chat.type";
+
 
 const chatCommonAggregation = () => {
   return [

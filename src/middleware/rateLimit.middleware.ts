@@ -2,8 +2,8 @@ import rateLimit from "express-rate-limit";
 import requestIp from "request-ip";
 
 export const messageRateLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 30, // limit each IP to 30 requests per windowMs
+  windowMs: 60 * 1000,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => requestIp.getClientIp(req) || "unknown",
@@ -17,8 +17,8 @@ export const messageRateLimiter = rateLimit({
 });
 
 export const chatCreationRateLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 chat creations per windowMs
+  windowMs: 60 * 1000,
+  max: 10,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => requestIp.getClientIp(req) || "unknown",
