@@ -95,95 +95,138 @@ const createOrGetAOneOnOneChat = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const {
-    participants,
-    name,
-  }: { participants: ChatParticipant[]; name: string } = req.body;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const session = await startSession();
+  session.startTransaction();
 
-  const otherParticipant = participants[0];
-  if (otherParticipant.userId === currentUser.id) {
-    throw new ApiError(400, "You cannot chat with yourself");
-  }
+  try {
+    const {
+      participants,
+      name,
+    }: { participants: ChatParticipant[]; name: string } = req.body;
+    const currentUser = (req as AuthenticatedRequest).user;
 
-  const currentUserParticipant = {
-    userId: currentUser.id,
-    name: currentUser.name,
-    avatarUrl: currentUser.avatarUrl,
-  };
+    const otherParticipant = participants[0];
+    if (otherParticipant.userId === currentUser.id) {
+      throw new ApiError(400, "You cannot chat with yourself");
+    }
 
-  const newChatInstance = await Chat.create({
-    name,
-    participants: [currentUserParticipant, otherParticipant],
-    admin: currentUser.id,
-    createdBy: currentUser.id,
-  });
+    // Validate other participant first
+    const usersToAdd = await validateUser([otherParticipant.userId]);
+    if (!usersToAdd.length) {
+      throw new ApiError(403, "Invalid User.");
+    }
 
-  if (
-    !(await resilientApiCall(() => validateUser([otherParticipant.userId])))
-  ) {
-    throw new ApiError(403, "Invalid User.");
-  }
+    const currentUserParticipant = {
+      userId: currentUser.id,
+      name: currentUser.name,
+      avatarUrl: currentUser.avatarUrl,
+    };
 
-  const chat = await Chat.aggregate([
-    {
-      $match: {
-        type: "direct",
-        participants: {
-          $all: [
-            { $elemMatch: { userId: currentUser.id } },
-            { $elemMatch: { userId: otherParticipant.userId } },
-          ],
+    // Check for existing chat
+    const existingChat = await Chat.aggregate([
+      {
+        $match: {
+          type: "direct",
+          participants: {
+            $all: [
+              { $elemMatch: { userId: currentUser.id } },
+              { $elemMatch: { userId: otherParticipant.userId } },
+            ],
+          },
         },
       },
-    },
-    ...chatCommonAggregation(),
-  ]);
+      ...chatCommonAggregation(),
+    ]);
 
-  if (chat.length) {
-    res
-      .status(200)
-      .json(new ApiResponse(200, chat[0], "Chat retrieved successfully"));
-    return;
-  }
+    if (existingChat.length) {
+      await session.commitTransaction();
+      res
+        .status(200)
+        .json(
+          new ApiResponse(200, existingChat[0], "Chat retrieved successfully")
+        );
+      return;
+    }
 
-  const createChat = await Chat.aggregate([
-    { $match: { _id: newChatInstance._id } },
-    ...chatCommonAggregation(),
-  ]);
-  const payload: ChatType = createChat[0];
-  if (!payload) {
-    throw new ApiError(500, "Internal Server error");
-  }
-
-  payload.participants.forEach(async (participant) => {
-    if (participant.userId === currentUser.id) return;
-    emitSocketEvent<ChatType>(
-      req,
-      participant.userId,
-      ChatEventEnum.NEW_CHAT_EVENT,
-      payload
+    // Create new chat
+    const newChatInstance = await Chat.create(
+      [
+        {
+          name,
+          type: "direct",
+          participants: [currentUserParticipant, otherParticipant],
+          admin: currentUser.id,
+          createdBy: currentUser.id,
+        },
+      ],
+      { session }
     );
-  });
 
-  res
-    .status(201)
-    .json(new ApiResponse(201, payload, "Chat retrieved successfully"));
+    const createChat = await Chat.aggregate([
+      { $match: { _id: newChatInstance[0]._id } },
+      ...chatCommonAggregation(),
+    ]);
+
+    const payload: ChatType = createChat[0];
+    if (!payload) {
+      throw new ApiError(500, "Internal Server error");
+    }
+
+    await session.commitTransaction();
+
+    payload.participants.forEach(async (participant) => {
+      if (participant.userId === currentUser.id) return;
+      await emitSocketEvent<ChatType>(
+        req,
+        participant.userId,
+        ChatEventEnum.NEW_CHAT_EVENT,
+        payload
+      );
+    });
+
+    res
+      .status(201)
+      .json(new ApiResponse(201, payload, "Chat created successfully"));
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 };
 
 // Delete Cascade Chat Messages
 const deleteCascadeChatMessages = async (chatId: string): Promise<void> => {
-  const messages = await ChatMessage.find({ chatId });
+  const session = await startSession();
+  session.startTransaction();
 
-  for (const message of messages) {
-    if (message.attachments?.length) {
-      for (const attachment of message.attachments) {
-        await removeLocalFile(attachment.localPath);
+  try {
+    const messages = await ChatMessage.find({ chatId });
+
+    for (const message of messages) {
+      if (message.attachments?.length) {
+        for (const attachment of message.attachments) {
+          try {
+            await removeLocalFile(attachment.localPath);
+          } catch (error) {
+            console.error(
+              `Failed to delete file: ${attachment.localPath}`,
+              error
+            );
+            // Continue with other files even if one fails
+          }
+        }
       }
     }
-  }
 
-  await ChatMessage.deleteMany({ chatId });
+    await ChatMessage.deleteMany({ chatId }, { session });
+    await session.commitTransaction();
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 };
 
 // Delete One-on-One Chat
@@ -191,35 +234,48 @@ const deleteOneOnOneChat = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { chatId } = req.params;
-  const chat = await Chat.aggregate([
-    { $match: { _id: new Types.ObjectId(chatId) } },
-    ...chatCommonAggregation(),
-  ]);
-  const payload: ChatType = chat[0];
+  const session = await startSession();
+  session.startTransaction();
 
-  if (!payload) {
-    throw new ApiError(404, "Chat does not exist");
+  try {
+    const { chatId } = req.params;
+    const chat = await Chat.aggregate([
+      { $match: { _id: new Types.ObjectId(chatId) } },
+      ...chatCommonAggregation(),
+    ]);
+    const payload: ChatType = chat[0];
+
+    if (!payload) {
+      throw new ApiError(404, "Chat does not exist");
+    }
+
+    await Chat.findByIdAndDelete(chatId, { session });
+    await deleteCascadeChatMessages(chatId);
+
+    const otherParticipant = payload?.participants?.find(
+      (participant) =>
+        participant.userId !== (req as AuthenticatedRequest).user.id.toString()
+    );
+    if (!otherParticipant) {
+      throw new ApiError(404, "Other user not found.");
+    }
+
+    await session.commitTransaction();
+
+    await emitSocketEvent<ChatType>(
+      req,
+      otherParticipant.userId,
+      ChatEventEnum.DELETE_CHAT_EVENT,
+      payload
+    );
+
+    res.status(200).json(new ApiResponse(200, {}, "Chat deleted successfully"));
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
-
-  await Chat.findByIdAndDelete(chatId);
-  await deleteCascadeChatMessages(chatId);
-
-  const otherParticipant = payload?.participants?.find(
-    (participant) =>
-      participant.userId !== (req as AuthenticatedRequest).user.id.toString()
-  );
-  if (!otherParticipant) {
-    throw new ApiError(404, "Other user not found.");
-  }
-  emitSocketEvent<ChatType>(
-    req,
-    otherParticipant.userId,
-    ChatEventEnum.DELETE_CHAT_EVENT,
-    payload
-  );
-
-  res.status(200).json(new ApiResponse(200, {}, "Chat deleted successfully"));
 };
 
 // Get Chat By Id
@@ -453,7 +509,7 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
 
 // Add New Participant In Group Chat
 const addNewParticipantInGroupChat = async (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response
 ): Promise<void> => {
   const { chatId } = req.params;
@@ -469,7 +525,9 @@ const addNewParticipantInGroupChat = async (
     throw new ApiError(400, "This feature is only available for group chats");
   }
 
-  if (chat.admin?.toString() !== req.user?._id.toString()) {
+  if (
+    chat.admin?.toString() !== (req as AuthenticatedRequest).user.id.toString()
+  ) {
     throw new ApiError(403, "You are not an admin");
   }
 
@@ -523,7 +581,7 @@ const addNewParticipantInGroupChat = async (
 
 // Remove Participant From Group Chat
 const removeParticipantFromGroupChat = async (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response
 ): Promise<void> => {
   const { chatId, participantId } = req.params;
@@ -538,7 +596,7 @@ const removeParticipantFromGroupChat = async (
     throw new ApiError(400, "This feature is only available for group chats");
   }
 
-  if (chat.admin?.toString() !== req.user?._id.toString()) {
+  if (chat.admin?.toString() !== (req as AuthenticatedRequest).user.id.toString()) {
     throw new ApiError(403, "You are not an admin");
   }
 
@@ -583,7 +641,7 @@ const removeParticipantFromGroupChat = async (
 
 // Leave Group Chat
 const leaveGroupChat = async (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response
 ): Promise<void> => {
   const { chatId } = req.params;
@@ -600,7 +658,7 @@ const leaveGroupChat = async (
 
   const participantExists = chat.participants.find(
     (participant: ChatParticipant) =>
-      participant.userId.toString() === req.user?._id.toString()
+      participant.userId.toString() === (req as AuthenticatedRequest).user.id.toString()
   );
 
   if (!participantExists) {
@@ -609,7 +667,7 @@ const leaveGroupChat = async (
 
   chat.participants = chat.participants.filter(
     (participant: ChatParticipant) =>
-      participant.userId.toString() !== req.user?._id.toString()
+      participant.userId.toString() !== (req as AuthenticatedRequest).user.id.toString()
   );
 
   await chat.save();

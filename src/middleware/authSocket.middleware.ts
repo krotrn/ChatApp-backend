@@ -27,7 +27,7 @@ export default async (
     if (!decoded) {
       return next(new Error("Invalid token"));
     }
-    const isValid = await validateUser(decoded.id);
+    const isValid = await validateUser([decoded.id]);
     if (!isValid) return next(new ApiError(403, "Invalid user"));
 
     socket.user = decoded;

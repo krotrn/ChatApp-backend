@@ -13,10 +13,10 @@ import ApiError from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { getLocalPath, removeLocalFile } from "../utils/fileOperations";
 import { getStaticFilePath } from "../utils/fileOperations";
-import { resilientApiCall } from "../utils/apiRetry";
 import { validateUser } from "../utils/userHelper";
+import { validateMessageInput } from "../utils/validators";
 import type { Request, Response } from "express";
-import { Types } from "mongoose";
+import { Types, startSession } from "mongoose";
 import { emitSocketEvent } from "../socket";
 import { ChatEventEnum } from "../utils/constants";
 
@@ -90,157 +90,201 @@ const getAllMessages = async (req: Request, res: Response): Promise<void> => {
 };
 
 const sendMessage = async (req: Request, res: Response): Promise<void> => {
-  const { chatId } = req.params;
-  const { content }: { content: string } = req.body;
-  const hasAttachments =
-    req.files &&
-    (Array.isArray(req.files)
-      ? req.files.length > 0
-      : req.files.attachments && req.files.attachments.length > 0);
-  if (!content && !hasAttachments) {
-    throw new ApiError(400, "Message content or attachment is required");
-  }
+  const session = await startSession();
+  session.startTransaction();
 
-  const selectedChat: ChatType | null = await Chat.findById(chatId);
-  if (!selectedChat) {
-    throw new ApiError(404, "Chat does not exist");
-  }
+  try {
+    const { chatId } = req.params;
+    const { content }: { content: string } = req.body;
 
-  const receivers = selectedChat.participants.filter(
-    (participant) =>
-      participant.userId !== (req as AuthenticatedRequest).user.id
-  );
-  if (!receivers.length) {
-    throw new ApiError(400, "Unable to determine message receiver");
-  }
+    // Validate message input
+    let attachments: Express.Multer.File[] = [];
+    if (!Array.isArray(req.files) && req.files?.attachments) {
+      attachments = req.files.attachments;
+    } else if (Array.isArray(req.files)) {
+      attachments = req.files;
+    }
 
-  await Promise.all(
-    receivers.map(async (user) => {
-      if (!(await resilientApiCall(() => validateUser(user.userId)))) {
-        throw new ApiError(400, `User ${user.userId} not found`);
-      }
-    })
-  );
+    validateMessageInput(content, attachments);
 
-  let attachments: Express.Multer.File[] = [];
-  if (!Array.isArray(req.files) && req.files?.attachments) {
-    attachments = req.files.attachments;
-  } else if (Array.isArray(req.files)) {
-    attachments = req.files;
-  }
-  const messageFiles: AttachmentType[] = attachments.map((attachment) => ({
-    name: attachment.filename,
-    url: getStaticFilePath(req, attachment.filename),
-    localPath: getLocalPath(attachment.filename),
-    type: attachment.mimetype || "application/octet-stream",
-  }));
+    const selectedChat: ChatType | null = await Chat.findById(chatId);
+    if (!selectedChat) {
+      throw new ApiError(404, "Chat does not exist");
+    }
 
-  const message: MessageType = await ChatMessage.create({
-    sender: (req as AuthenticatedRequest).user.id,
-    receivers,
-    content: content || "",
-    chatId: new Types.ObjectId(chatId),
-    attachments: messageFiles,
-  });
-  const updateChat = await Chat.findByIdAndUpdate(
-    chatId,
-    { $set: { lastMessage: message._id, status: StatusEnum.sent } },
-    { new: true }
-  );
-
-  const messages: MessageType[] = await ChatMessage.aggregate([
-    { $match: { _id: message._id } },
-    ...chatMessageCommonAggregation(),
-  ]);
-
-  const receivedMessage = messages[0];
-  if (!receivedMessage || !updateChat) {
-    throw new ApiError(500, "Internal server error");
-  }
-
-  if (updateChat.type === "group") {
-    emitSocketEvent(
-      req,
-      chatId,
-      ChatEventEnum.MESSAGE_RECEIVED_EVENT,
-      receivedMessage
+    const receivers = selectedChat.participants.filter(
+      (participant) =>
+        participant.userId !== (req as AuthenticatedRequest).user.id
     );
-  } else {
-    updateChat.participants.forEach((participant: ChatParticipant) => {
-      if (participant.userId === (req as AuthenticatedRequest).user.id) return;
-      emitSocketEvent(
+    if (!receivers.length) {
+      throw new ApiError(400, "Unable to determine message receiver");
+    }
+
+    // Validate all receivers
+    const receiverIds = receivers.map((user) => user.userId);
+    const validReceivers = await validateUser(receiverIds);
+    if (validReceivers.length !== receiverIds.length) {
+      throw new ApiError(400, "One or more receivers are invalid");
+    }
+
+    const messageFiles: AttachmentType[] = attachments.map((attachment) => ({
+      name: attachment.filename,
+      url: getStaticFilePath(req, attachment.filename),
+      localPath: getLocalPath(attachment.filename),
+      type: attachment.mimetype || "application/octet-stream",
+    }));
+
+    const message = await ChatMessage.create(
+      [
+        {
+          sender: (req as AuthenticatedRequest).user.id,
+          receivers,
+          content: content || "",
+          chatId: new Types.ObjectId(chatId),
+          attachments: messageFiles,
+          status: StatusEnum.sent,
+        },
+      ],
+      { session }
+    );
+
+    const updateChat = await Chat.findByIdAndUpdate(
+      chatId,
+      { $set: { lastMessage: message[0]._id } },
+      { new: true, session }
+    );
+
+    const messages: MessageType[] = await ChatMessage.aggregate([
+      { $match: { _id: message[0]._id } },
+      ...chatMessageCommonAggregation(),
+    ]);
+
+    const receivedMessage = messages[0];
+    if (!receivedMessage || !updateChat) {
+      throw new ApiError(500, "Internal server error");
+    }
+
+    await session.commitTransaction();
+
+    if (updateChat.type === "group") {
+      await emitSocketEvent(
         req,
-        participant.userId,
+        chatId,
         ChatEventEnum.MESSAGE_RECEIVED_EVENT,
         receivedMessage
       );
-    });
-  }
+    } else {
+      for (const participant of updateChat.participants) {
+        if (participant.userId === (req as AuthenticatedRequest).user.id)
+          continue;
+        await emitSocketEvent(
+          req,
+          participant.userId,
+          ChatEventEnum.MESSAGE_RECEIVED_EVENT,
+          receivedMessage
+        );
+      }
+    }
 
-  res
-    .status(201)
-    .json(new ApiResponse(201, receivedMessage, "Message saved successfully"));
+    res
+      .status(201)
+      .json(
+        new ApiResponse(201, receivedMessage, "Message saved successfully")
+      );
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 };
 
 const deleteMessage = async (req: Request, res: Response): Promise<void> => {
-  const { chatId, messageId } = req.params;
+  const session = await startSession();
+  session.startTransaction();
 
-  const chat: ChatType | null = await Chat.findById(chatId);
-  if (
-    !chat ||
-    !chat.participants.some(
-      (participant) =>
-        participant.userId === (req as AuthenticatedRequest).user.id
-    )
-  ) {
-    throw new ApiError(404, "Chat does not exist");
-  }
+  try {
+    const { chatId, messageId } = req.params;
+    const currentUser = (req as AuthenticatedRequest).user;
 
-  const message: MessageType | null = await ChatMessage.findById(messageId);
-  if (!message) {
-    throw new ApiError(404, "Message does not exist");
-  }
-
-  if (message.sender !== (req as AuthenticatedRequest).user.id) {
-    throw new ApiError(403, "You are not authorised to delete this message");
-  }
-
-  if (message.attachments.length > 0) {
-    await Promise.all(
-      message.attachments.map(
-        async (asset) => await removeLocalFile(asset.localPath)
+    const chat: ChatType | null = await Chat.findById(chatId);
+    if (
+      !chat ||
+      !chat.participants.some(
+        (participant) => participant.userId === currentUser.id
       )
-    );
+    ) {
+      throw new ApiError(404, "Chat does not exist");
+    }
+
+    const message: MessageType | null = await ChatMessage.findById(messageId);
+    if (!message) {
+      throw new ApiError(404, "Message does not exist");
+    }
+    const isAdmin = chat.admin === currentUser.id;
+    const isSender = message.sender === currentUser.id;
+    const isRecent =
+      Date.now() - message.createdAt.getTime() < 24 * 60 * 60 * 1000;
+
+    if (!isAdmin && !isSender) {
+      throw new ApiError(403, "You are not authorized to delete this message");
+    }
+
+    if (!isAdmin && !isRecent) {
+      throw new ApiError(
+        403,
+        "You can only delete messages less than 24 hours old"
+      );
+    }
+
+    if (message.attachments.length > 0) {
+      for (const asset of message.attachments) {
+        try {
+          await removeLocalFile(asset.localPath);
+        } catch (error) {
+          console.error(`Failed to delete file: ${asset.localPath}`, error);
+        }
+      }
+    }
+
+    await ChatMessage.deleteOne({ _id: message._id }, { session });
+
+    if (chat.lastMessage?.toString() === message._id.toString()) {
+      const lastMessage = await ChatMessage.findOne(
+        { chatId },
+        {},
+        { sort: { createdAt: -1 } }
+      );
+      await Chat.findByIdAndUpdate(
+        chatId,
+        {
+          lastMessage: lastMessage ? lastMessage._id : null,
+        },
+        { session }
+      );
+    }
+
+    await session.commitTransaction();
+
+    for (const participant of chat.participants) {
+      if (participant.userId === currentUser.id) continue;
+      await emitSocketEvent(
+        req,
+        participant.userId,
+        ChatEventEnum.MESSAGE_DELETE_EVENT,
+        message
+      );
+    }
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, message, "Message deleted successfully"));
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
-
-  await ChatMessage.deleteOne({ _id: message._id });
-
-  if (
-    chat.lastMessage?.toString() === (message._id as Types.ObjectId).toString()
-  ) {
-    const lastMessage = await ChatMessage.findOne(
-      { chatId },
-      {},
-      { sort: { createdAt: -1 } }
-    );
-    await Chat.findByIdAndUpdate(chatId, {
-      lastMessage: lastMessage ? lastMessage._id : null,
-    });
-  }
-
-  chat.participants.forEach((participant) => {
-    if (participant.userId === (req as AuthenticatedRequest).user.id) return;
-    emitSocketEvent(
-      req,
-      participant.userId,
-      ChatEventEnum.MESSAGE_DELETE_EVENT,
-      message
-    );
-  });
-
-  res
-    .status(200)
-    .json(new ApiResponse(200, message, "Message deleted successfully"));
 };
 
 const replyMessage = async (req: Request, res: Response): Promise<void> => {

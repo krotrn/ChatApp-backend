@@ -1,8 +1,11 @@
 import type { Document, Types } from "mongoose";
+import type { ChatParticipant } from "./chat.type";
 
 export interface AttachmentType {
   url: string;
   localPath: string;
+  name: string;
+  type: string;
 }
 
 export enum StatusEnum {
@@ -18,8 +21,9 @@ export interface ReactionType {
 }
 
 export interface MessageType extends Document {
+  _id: Types.ObjectId;
   sender: string;
-  receivers: string[];
+  receivers: ChatParticipant[];
   chatId: Types.ObjectId;
   content: string;
   attachments: AttachmentType[];
@@ -28,4 +32,6 @@ export interface MessageType extends Document {
   edited: { isEdited: boolean; editedAt: Date; previousContent: string[] };
   isDeleted: boolean;
   replyTo: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
 }

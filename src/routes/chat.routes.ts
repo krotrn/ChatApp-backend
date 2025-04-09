@@ -1,45 +1,59 @@
-import { Router } from 'express';
-
+import express from "express";
 import {
-  getAllChats,
-  createOrGetAOneOnOneChat,
-  createAGroupChat,
-  getGroupChatDetails,
-  renameGroupChat,
-  deleteGroupChat,
   addNewParticipantInGroupChat,
-  removeParticipantFromGroupChat,
-  leaveGroupChat,
-  deleteOneOnOneChat,
-  pinMessage,
-  unpinMessage,
+  createAGroupChat,
+  createOrGetAOneOnOneChat,
   deleteChatForMe,
+  deleteGroupChat,
+  deleteOneOnOneChat,
+  getAllChats,
   getChatById,
-} from '../controllers/chat.controllers';
+  getGroupChatDetails,
+  leaveGroupChat,
+  pinMessage,
+  removeParticipantFromGroupChat,
+  renameGroupChat,
+  unpinMessage,
+} from "../controllers/chat.controllers";
+import { authenticate } from "../middleware/auth.middleware";
+import { chatCreationRateLimiter } from "../middleware/rateLimit.middleware";
 
-const router = Router();
+const router = express.Router();
 
-// Chat routes
-router.get('/', getAllChats);
-router.post('/chat', createOrGetAOneOnOneChat);
-router.route('/chat/:chatId').delete(deleteOneOnOneChat).get(getChatById);
-router.delete('/chat/:chatId/me', deleteChatForMe);
-
-// Group chat routes
-router.post('/group', createAGroupChat);
-router
-  .route('/group/:chatId')
-  .get(getGroupChatDetails)
-  .patch(renameGroupChat)
-  .delete(deleteGroupChat);
+router.use(authenticate);
 
 router
-  .route('/group/:chatId/participant/:participantId')
-  .post(addNewParticipantInGroupChat)
+  .route("/")
+  .get(getAllChats)
+  .post(chatCreationRateLimiter, createOrGetAOneOnOneChat);
+
+router
+  .route("/group")
+  .post(chatCreationRateLimiter, createAGroupChat)
+  .get(getGroupChatDetails);
+
+router
+  .route("/group/:chatId")
+  .delete(deleteGroupChat)
+  .patch(chatCreationRateLimiter, renameGroupChat);
+
+router
+  .route("/group/:chatId/participants")
+  .post(chatCreationRateLimiter, addNewParticipantInGroupChat)
   .delete(removeParticipantFromGroupChat);
-router.delete('/group/:chatId/leave', leaveGroupChat);
 
-// Pin/Unpin message routes
-router.route('/chat/:chatId/pin/:messageId').post(pinMessage).delete(unpinMessage);
+router.route("/group/:chatId/leave").post(leaveGroupChat);
+
+router
+  .route("/:chatId")
+  .get(getChatById)
+  .delete(deleteOneOnOneChat);
+
+router.route("/:chatId/delete-for-me").delete(deleteChatForMe);
+
+router
+  .route("/:chatId/pin/:messageId")
+  .post(pinMessage)
+  .delete(unpinMessage);
 
 export default router;

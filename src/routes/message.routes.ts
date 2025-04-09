@@ -1,26 +1,52 @@
-import { Router } from 'express';
-
+import express from "express";
 import {
-  getAllMessages,
-  sendMessage,
   deleteMessage,
-  updateReaction,
+  getAllMessages,
   replyMessage,
-} from '../controllers/message.controllers';
-import { handleUploadErrors } from '../middleware/handleUploadErrors.middleware';
-import { upload } from '../middleware/multer.middleware';
+  sendMessage,
+  updateReaction,
+} from "../controllers/message.controllers";
+import { authenticate } from "../middleware/auth.middleware";
+import { messageRateLimiter, fileUploadRateLimiter } from "../middleware/rateLimit.middleware";
+import multer from "multer";
+import path from "path";
 
-const router = Router();
+const router = express.Router();
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(process.cwd(), "public", "images"));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+});
+
+router.use(authenticate);
 
 router
-  .route('/:chatId')
-  .get(getAllMessages)
-  .post(upload.fields([{ name: 'attachments', maxCount: 5 }]), handleUploadErrors, sendMessage);
+  .route("/:chatId")
+  .get(messageRateLimiter, getAllMessages)
+  .post(
+    messageRateLimiter,
+    fileUploadRateLimiter,
+    upload.array("attachments", 5),
+    sendMessage
+  );
 
-router.route('/:chatId/:messageId').delete(deleteMessage);
+router
+  .route("/:chatId/:messageId")
+  .delete(messageRateLimiter, deleteMessage)
+  .post(messageRateLimiter, replyMessage);
 
-router.post('/:chatId/:messageId/reaction', updateReaction);
-
-router.post('/:chatId/:messageId/reply', replyMessage);
+router.route("/:chatId/:messageId/reaction").post(messageRateLimiter, updateReaction);
 
 export default router;
