@@ -7,7 +7,7 @@ export const handleUploadErrors = (
   err: unknown,
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void => {
   if (err instanceof multer.MulterError) {
     return next(new ApiError(413, `File upload error: ${err.message}`));

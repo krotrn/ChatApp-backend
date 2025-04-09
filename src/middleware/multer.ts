@@ -20,7 +20,7 @@ const generateFilename = (req: Request, file: Express.Multer.File) => {
 const fileFilter = (
   req: Express.Request,
   file: Express.Multer.File,
-  cb: multer.FileFilterCallback
+  cb: multer.FileFilterCallback,
 ) => {
   const allowedExtensions = [".jpg", ".png", ".pdf", ".txt"];
   const ext = path.extname(file.originalname).toLowerCase();

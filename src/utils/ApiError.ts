@@ -15,7 +15,7 @@ export default class ApiError extends Error implements IApiError {
     statusCode: number,
     message: string = "Something went wrong",
     errors: unknown[] = [],
-    stack: string = ""
+    stack: string = "",
   ) {
     super(message);
     this.statusCode = statusCode;
@@ -23,7 +23,7 @@ export default class ApiError extends Error implements IApiError {
     this.message = message;
     this.success = false;
     this.errors = errors;
-    
+
     if (stack) {
       this.stack = stack;
     } else {

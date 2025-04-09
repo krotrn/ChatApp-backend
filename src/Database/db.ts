@@ -5,7 +5,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const connectDB = async (): Promise<typeof mongoose> => {
   try {
     const connection = await mongoose.connect(
-      MONGODB_URI || "mongodb://localhost:27017/chat"
+      MONGODB_URI || "mongodb://localhost:27017/chat",
     );
     console.error("MongoDB Connected Successfully");
     return connection;

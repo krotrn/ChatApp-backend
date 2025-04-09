@@ -14,9 +14,9 @@ import {
   removeParticipantFromGroupChat,
   renameGroupChat,
   unpinMessage,
-} from "../controllers/chat.ts";
-import { authenticate } from "../middleware/auth.ts";
-import { chatCreationRateLimiter } from "../middleware/rateLimit.ts";
+} from "../controllers/chat";
+import { authenticate } from "../middleware/auth";
+import { chatCreationRateLimiter } from "../middleware/rateLimit";
 
 const router = express.Router();
 
@@ -44,16 +44,10 @@ router
 
 router.route("/group/:chatId/leave").post(leaveGroupChat);
 
-router
-  .route("/:chatId")
-  .get(getChatById)
-  .delete(deleteOneOnOneChat);
+router.route("/:chatId").get(getChatById).delete(deleteOneOnOneChat);
 
 router.route("/:chatId/delete-for-me").delete(deleteChatForMe);
 
-router
-  .route("/:chatId/pin/:messageId")
-  .post(pinMessage)
-  .delete(unpinMessage);
+router.route("/:chatId/pin/:messageId").post(pinMessage).delete(unpinMessage);
 
 export default router;

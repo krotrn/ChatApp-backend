@@ -8,7 +8,7 @@ export const validateUser = async (userId: string): Promise<boolean> => {
       {
         headers: { "x-internal-api-key": process.env.INTERNAL_API_KEY },
         timeout: 3000,
-      }
+      },
     );
     if (!data.success) {
       throw new ApiError(500, "Validation service error");
@@ -18,7 +18,7 @@ export const validateUser = async (userId: string): Promise<boolean> => {
     if (axios.isAxiosError(error)) {
       throw new ApiError(
         error.response?.status || 500,
-        error.response?.data?.error || "User validation failed"
+        error.response?.data?.error || "User validation failed",
       );
     }
     throw new ApiError(500, "Internal server error during validation");

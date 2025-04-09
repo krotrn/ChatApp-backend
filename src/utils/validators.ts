@@ -1,7 +1,7 @@
 import ApiError from "./ApiError";
 import type { ChatParticipant } from "../types/chat";
 export const validateMessageContent = (content: string): boolean => {
-  if (!content || typeof content !== 'string') {
+  if (!content || typeof content !== "string") {
     return false;
   }
   const trimmedContent = content.trim();
@@ -9,14 +9,16 @@ export const validateMessageContent = (content: string): boolean => {
 };
 
 export const validateChatName = (name: string): boolean => {
-  if (!name || typeof name !== 'string') {
+  if (!name || typeof name !== "string") {
     return false;
   }
   const trimmedName = name.trim();
   return trimmedName.length > 0 && trimmedName.length <= 50;
 };
 
-export const validateParticipantCount = (participants: ChatParticipant[]): boolean => {
+export const validateParticipantCount = (
+  participants: ChatParticipant[],
+): boolean => {
   return participants.length >= 2 && participants.length <= 100;
 };
 
@@ -27,22 +29,28 @@ export const validateFileSize = (file: Express.Multer.File): boolean => {
 
 export const validateFileType = (file: Express.Multer.File): boolean => {
   const allowedTypes = [
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'application/pdf',
-    'text/plain'
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "application/pdf",
+    "text/plain",
   ];
   return allowedTypes.includes(file.mimetype);
 };
 
-export const validateMessageInput = (content: string, files?: Express.Multer.File[]): void => {
+export const validateMessageInput = (
+  content: string,
+  files?: Express.Multer.File[],
+): void => {
   if (!content && (!files || files.length === 0)) {
     throw new ApiError(400, "Message content or attachment is required");
   }
 
   if (content && !validateMessageContent(content)) {
-    throw new ApiError(400, "Message content must be between 1 and 1000 characters");
+    throw new ApiError(
+      400,
+      "Message content must be between 1 and 1000 characters",
+    );
   }
 
   if (files) {
@@ -55,4 +63,4 @@ export const validateMessageInput = (content: string, files?: Express.Multer.Fil
       }
     }
   }
-}; 
+};

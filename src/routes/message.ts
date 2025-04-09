@@ -7,7 +7,10 @@ import {
   updateReaction,
 } from "../controllers/message";
 import { authenticate } from "../middleware/auth";
-import { messageRateLimiter, fileUploadRateLimiter } from "../middleware/rateLimit";
+import {
+  messageRateLimiter,
+  fileUploadRateLimiter,
+} from "../middleware/rateLimit";
 import multer from "multer";
 import path from "path";
 
@@ -19,7 +22,10 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
+    cb(
+      null,
+      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname),
+    );
   },
 });
 
@@ -39,7 +45,7 @@ router
     messageRateLimiter,
     fileUploadRateLimiter,
     upload.array("attachments", 5),
-    sendMessage
+    sendMessage,
   );
 
 router
@@ -47,6 +53,8 @@ router
   .delete(messageRateLimiter, deleteMessage)
   .post(messageRateLimiter, replyMessage);
 
-router.route("/:chatId/:messageId/reaction").post(messageRateLimiter, updateReaction);
+router
+  .route("/:chatId/:messageId/reaction")
+  .post(messageRateLimiter, updateReaction);
 
 export default router;

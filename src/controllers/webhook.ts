@@ -18,7 +18,7 @@ router.post("/", async (req: Request, res: Response) => {
     if (action === "delete") {
       await Chat.updateMany(
         { "participants.userId": userId },
-        { $pull: { participants: { userId } } }
+        { $pull: { participants: { userId } } },
       );
     } else if (action === "update") {
       const { name, avatarUrl } = data;
@@ -30,7 +30,7 @@ router.post("/", async (req: Request, res: Response) => {
             "participants.$.name": name,
             "participants.$.avatarUrl": avatarUrl,
           },
-        }
+        },
       );
     }
     res.status(200).json({ message: "User update processed" });

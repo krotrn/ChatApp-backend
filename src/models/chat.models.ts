@@ -1,4 +1,4 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema } from "mongoose";
 
 const chatSchema = new Schema(
   {
@@ -8,18 +8,18 @@ const chatSchema = new Schema(
     },
     lastMessage: {
       type: Schema.Types.ObjectId,
-      ref: 'ChatMessage',
+      ref: "ChatMessage",
     },
     avatar: {
       type: String,
-      default: '',
+      default: "",
     },
     participants: [
       {
         userId: { type: String, required: true },
         name: { type: String, required: true },
         avatarUrl: { type: String, required: true },
-        role: { type: String, enum: ['member', 'admin'], default: 'member' },
+        role: { type: String, enum: ["member", "admin"], default: "member" },
         joinedAt: { type: Date, default: Date.now },
       },
     ],
@@ -28,7 +28,7 @@ const chatSchema = new Schema(
     },
     type: {
       type: String,
-      enum: ['direct', 'group', 'channel'],
+      enum: ["direct", "group", "channel"],
       required: true,
     },
     createdBy: {
@@ -48,7 +48,7 @@ const chatSchema = new Schema(
       pinnedMessage: [
         {
           type: Schema.Types.ObjectId,
-          ref: 'ChatMessage',
+          ref: "ChatMessage",
         },
       ],
       customePermissions: Schema.Types.Mixed,
@@ -56,9 +56,9 @@ const chatSchema = new Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 chatSchema.index({ participants: 1, updatedAt: -1 });
 
-export const Chat = mongoose.models.Chat || mongoose.model('Chat', chatSchema);
+export const Chat = mongoose.models.Chat || mongoose.model("Chat", chatSchema);

@@ -32,7 +32,7 @@ app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
-  })
+  }),
 );
 app.use(requestIp.mw());
 
@@ -51,13 +51,13 @@ app.use(express.static("public"));
 app.use(cookieParser());
 
 // Routes
-import chatRouter from "./routes/chat.ts";
-import messageRouter from "./routes/message.ts";
-import webhookRouter from "./routes/webhooks.ts";
+import chatRouter from "./routes/chat";
+import messageRouter from "./routes/message";
+import webhookRouter from "./routes/webhooks";
 import connectDB from "./database/db";
-import { errorHandler } from "./middleware/errorHandler.ts";
+import { errorHandler } from "./middleware/errorHandler";
 import { initializeSocketIO } from "./socket";
-import { authenticate } from "./middleware/auth.ts";
+import { authenticate } from "./middleware/auth";
 
 initializeSocketIO(io);
 

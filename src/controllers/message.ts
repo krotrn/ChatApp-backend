@@ -63,7 +63,7 @@ const getAllMessages = async (req: Request, res: Response): Promise<void> => {
   if (
     !selectedChat.participants.some(
       (participant: ChatParticipant) =>
-        participant.userId === (req as AuthenticatedRequest).user.id
+        participant.userId === (req as AuthenticatedRequest).user.id,
     )
   ) {
     throw new ApiError(400, "User is not part of chat.");
@@ -113,7 +113,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
 
     const receivers = selectedChat.participants.filter(
       (participant) =>
-        participant.userId !== (req as AuthenticatedRequest).user.id
+        participant.userId !== (req as AuthenticatedRequest).user.id,
     );
     if (!receivers.length) {
       throw new ApiError(400, "Unable to determine message receiver");
@@ -144,13 +144,13 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
           status: StatusEnum.sent,
         },
       ],
-      { session }
+      { session },
     );
 
     const updateChat = await Chat.findByIdAndUpdate(
       chatId,
       { $set: { lastMessage: message[0]._id } },
-      { new: true, session }
+      { new: true, session },
     );
 
     const messages: MessageType[] = await ChatMessage.aggregate([
@@ -170,7 +170,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
         req,
         chatId,
         ChatEventEnum.MESSAGE_RECEIVED_EVENT,
-        receivedMessage
+        receivedMessage,
       );
     } else {
       for (const participant of updateChat.participants) {
@@ -180,7 +180,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
           req,
           participant.userId,
           ChatEventEnum.MESSAGE_RECEIVED_EVENT,
-          receivedMessage
+          receivedMessage,
         );
       }
     }
@@ -188,7 +188,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
     res
       .status(201)
       .json(
-        new ApiResponse(201, receivedMessage, "Message saved successfully")
+        new ApiResponse(201, receivedMessage, "Message saved successfully"),
       );
   } catch (error) {
     await session.abortTransaction();
@@ -210,7 +210,7 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
     if (
       !chat ||
       !chat.participants.some(
-        (participant) => participant.userId === currentUser.id
+        (participant) => participant.userId === currentUser.id,
       )
     ) {
       throw new ApiError(404, "Chat does not exist");
@@ -232,7 +232,7 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
     if (!isAdmin && !isRecent) {
       throw new ApiError(
         403,
-        "You can only delete messages less than 24 hours old"
+        "You can only delete messages less than 24 hours old",
       );
     }
 
@@ -252,14 +252,14 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
       const lastMessage = await ChatMessage.findOne(
         { chatId },
         {},
-        { sort: { createdAt: -1 } }
+        { sort: { createdAt: -1 } },
       );
       await Chat.findByIdAndUpdate(
         chatId,
         {
           lastMessage: lastMessage ? lastMessage._id : null,
         },
-        { session }
+        { session },
       );
     }
 
@@ -271,7 +271,7 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
         req,
         participant.userId,
         ChatEventEnum.MESSAGE_DELETE_EVENT,
-        message
+        message,
       );
     }
 
@@ -301,7 +301,7 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
 
   const receivers = chat.participants.filter(
     (participant: ChatParticipant) =>
-      participant.userId !== (req as AuthenticatedRequest).user.id
+      participant.userId !== (req as AuthenticatedRequest).user.id,
   );
   if (!receivers.length) {
     throw new ApiError(400, "Unable to determine message receiver");
@@ -325,7 +325,7 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
       req,
       participant.userId,
       ChatEventEnum.MESSAGE_RECEIVED_EVENT,
-      reply
+      reply,
     );
   });
 
@@ -353,7 +353,7 @@ const updateReaction = async (req: Request, res: Response): Promise<void> => {
 
   const reactionIndex = message.reactions.findIndex(
     (reaction: ReactionType) =>
-      reaction.userId === (req as AuthenticatedRequest).user.id
+      reaction.userId === (req as AuthenticatedRequest).user.id,
   );
 
   if (reactionIndex !== -1) {
@@ -377,7 +377,7 @@ const updateReaction = async (req: Request, res: Response): Promise<void> => {
       req,
       participant.userId,
       ChatEventEnum.MESSAGE_REACTION_EVENT,
-      message
+      message,
     );
   });
 

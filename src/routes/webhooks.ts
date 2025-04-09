@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import { Router } from "express";
 
-import webhook from '../controllers/webhook';
+import webhook from "../controllers/webhook";
 
 const router = Router();
 
-router.post('/user', webhook);
+router.post("/user", webhook);
 
 export default router;

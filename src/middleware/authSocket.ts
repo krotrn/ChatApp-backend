@@ -6,7 +6,7 @@ import { validateUser } from "../utils/userHelper";
 
 export default async (
   socket: CustomSocket,
-  next: (err?: ExtendedError) => void
+  next: (err?: ExtendedError) => void,
 ) => {
   try {
     const token = socket.handshake.auth.token;
@@ -21,7 +21,7 @@ export default async (
 
     const decoded = jwt.verify(
       token,
-      accessTokenSecret
+      accessTokenSecret,
     ) as CustomSocket["user"];
 
     if (!decoded) {

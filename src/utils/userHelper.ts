@@ -2,7 +2,7 @@ import axios from "axios";
 import ApiError from "../utils/ApiError";
 
 export const validateUser = async (
-  userIds: string[]
+  userIds: string[],
 ): Promise<Array<{ _id: string; fullName: string; avatar: string }>> => {
   try {
     const { data } = await axios.post(
@@ -13,7 +13,7 @@ export const validateUser = async (
           "x-internal-api-key": process.env.INTERNAL_API_KEY,
         },
         timeout: 3000,
-      }
+      },
     );
 
     if (!data.success) {
@@ -25,7 +25,7 @@ export const validateUser = async (
     if (axios.isAxiosError(error)) {
       throw new ApiError(
         error.response?.status || 500,
-        error.response?.data?.error || "User validation failed"
+        error.response?.data?.error || "User validation failed",
       );
     }
     throw new ApiError(500, "Internal server error during validation");

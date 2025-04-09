@@ -9,7 +9,7 @@ export const errorHandler: ErrorRequestHandler = (
   err: Error,
   req,
   res,
-  next
+  next,
 ) => {
   void next;
 

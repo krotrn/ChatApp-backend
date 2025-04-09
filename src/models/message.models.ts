@@ -1,6 +1,6 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema } from "mongoose";
 
-import { StatusEnum } from '../types/message';
+import { StatusEnum } from "../types/message";
 
 const chatMessageSchema = new Schema(
   {
@@ -18,7 +18,7 @@ const chatMessageSchema = new Schema(
     ],
     chatId: {
       type: Schema.Types.ObjectId,
-      ref: 'Chat',
+      ref: "Chat",
       required: true,
       index: true,
     },
@@ -65,14 +65,15 @@ const chatMessageSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    replyToId: { type: Schema.Types.ObjectId, ref: 'ChatMessage' },
+    replyToId: { type: Schema.Types.ObjectId, ref: "ChatMessage" },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 chatMessageSchema.index({ chatId: 1, createdAt: -1 });
 
 export const ChatMessage =
-  mongoose.models.ChatMessage || mongoose.model('ChatMessage', chatMessageSchema);
+  mongoose.models.ChatMessage ||
+  mongoose.model("ChatMessage", chatMessageSchema);
