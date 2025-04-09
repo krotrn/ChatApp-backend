@@ -14,9 +14,9 @@ import {
   removeParticipantFromGroupChat,
   renameGroupChat,
   unpinMessage,
-} from "../controllers/chat.controllers";
-import { authenticate } from "../middleware/auth.middleware";
-import { chatCreationRateLimiter } from "../middleware/rateLimit.middleware";
+} from "../controllers/chat.ts";
+import { authenticate } from "../middleware/auth.ts";
+import { chatCreationRateLimiter } from "../middleware/rateLimit.ts";
 
 const router = express.Router();
 

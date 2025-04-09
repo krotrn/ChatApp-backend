@@ -5,9 +5,9 @@ import {
   MessageType,
   StatusEnum,
   ReactionType,
-} from "../types/message.type";
-import type { ChatParticipant, ChatType } from "../types/chat.type";
-import type { AuthenticatedRequest } from "../types/request.type";
+} from "../types/message";
+import type { ChatParticipant, ChatType } from "../types/chat";
+import type { AuthenticatedRequest } from "../types/request";
 import ApiError from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { getLocalPath, removeLocalFile } from "../utils/fileOperations";

@@ -1,5 +1,5 @@
 import type { ExtendedError } from "socket.io/dist/namespace";
-import type { CustomSocket } from "../types/Socket.type";
+import type { CustomSocket } from "../types/Socket";
 import jwt from "jsonwebtoken";
 import ApiError from "../utils/ApiError";
 import { validateUser } from "../utils/userHelper";

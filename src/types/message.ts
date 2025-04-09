@@ -1,5 +1,5 @@
 import type { Document, Types } from "mongoose";
-import type { ChatParticipant } from "./chat.type";
+import type { ChatParticipant } from "./chat";
 
 export interface AttachmentType {
   url: string;

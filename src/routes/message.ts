@@ -5,9 +5,9 @@ import {
   replyMessage,
   sendMessage,
   updateReaction,
-} from "../controllers/message.controllers";
-import { authenticate } from "../middleware/auth.middleware";
-import { messageRateLimiter, fileUploadRateLimiter } from "../middleware/rateLimit.middleware";
+} from "../controllers/message";
+import { authenticate } from "../middleware/auth";
+import { messageRateLimiter, fileUploadRateLimiter } from "../middleware/rateLimit";
 import multer from "multer";
 import path from "path";
 

@@ -1,7 +1,7 @@
 import type { Server } from 'socket.io';
 
-import authenticateSocket from '../middleware/authSocket.middleware';
-import type { CustomSocket } from '../types/Socket.type';
+import authenticateSocket from '../middleware/authSocket.ts';
+import type { CustomSocket } from '../types/Socket.ts';
 import { ChatEventEnum } from '../utils/constants';
 
 const initializeSocketIO = (io: Server): void => {

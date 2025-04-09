@@ -1,6 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 
-import { StatusEnum } from '../types/message.type';
+import { StatusEnum } from '../types/message';
 
 const chatMessageSchema = new Schema(
   {

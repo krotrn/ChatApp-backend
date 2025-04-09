@@ -126,7 +126,7 @@ Set up MongoDB instances and update `.env` with their connection URIs.
 
 ## Error Handling ❌
 
-Errors are managed with a custom `ApiError` class and a global error handler middleware (`errorHandler.middleware.ts`), ensuring consistent error responses.
+Errors are managed with a custom `ApiError` class and a global error handler middleware (`errorHandler.middleware.ts.ts`), ensuring consistent error responses.
 
 ## Linting 🧹
 

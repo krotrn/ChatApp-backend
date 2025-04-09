@@ -51,13 +51,13 @@ app.use(express.static("public"));
 app.use(cookieParser());
 
 // Routes
-import chatRouter from "./routes/chat.routes";
-import messageRouter from "./routes/message.routes";
-import webhookRouter from "./routes/webhooks.route";
+import chatRouter from "./routes/chat.ts";
+import messageRouter from "./routes/message.ts";
+import webhookRouter from "./routes/webhooks.ts";
 import connectDB from "./database/db";
-import { errorHandler } from "./middleware/errorHandler.middleware";
+import { errorHandler } from "./middleware/errorHandler.ts";
 import { initializeSocketIO } from "./socket";
-import { authenticate } from "./middleware/auth.middleware";
+import { authenticate } from "./middleware/auth.ts";
 
 initializeSocketIO(io);
 

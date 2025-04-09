@@ -12,9 +12,9 @@ import { ChatEventEnum } from "../utils/constants";
 import { removeLocalFile } from "../utils/fileOperations";
 import { validateUser } from "../utils/userHelper";
 
-import { chatMessageCommonAggregation } from "./message.controllers";
-import type { AuthenticatedRequest } from "../types/request.type";
-import type { ChatParticipant, ChatType, DeletedForEntry } from "../types/chat.type";
+import { chatMessageCommonAggregation } from "./message";
+import type { AuthenticatedRequest } from "../types/request";
+import type { ChatParticipant, ChatType, DeletedForEntry } from "../types/chat";
 
 
 const chatCommonAggregation = () => {
