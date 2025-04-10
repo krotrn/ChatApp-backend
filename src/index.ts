@@ -18,6 +18,7 @@ app.use(morgan("dev"));
 const CLIENT_URL = process.env.CLIENT_URL || "*";
 const allowedOrigins =
   CLIENT_URL === "*" ? "*" : CLIENT_URL.split(",").map((url) => url.trim());
+console.log("Allowed Origins:", allowedOrigins);
 
 const io = new Server(httpServer, {
   pingTimeout: 60000,
