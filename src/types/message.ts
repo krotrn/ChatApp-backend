@@ -31,7 +31,7 @@ export interface MessageType extends Document {
   reactions: ReactionType[];
   edited: { isEdited: boolean; editedAt: Date; previousContent: string[] };
   isDeleted: boolean;
-  replyTo: Types.ObjectId;
+  replyTo?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }

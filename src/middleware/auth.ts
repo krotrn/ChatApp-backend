@@ -10,6 +10,8 @@ interface JwtPayload {
   email: string;
   username: string;
   role: string;
+  exp: number;
+  iat: number;
 }
 
 declare module "express" {
@@ -30,11 +32,23 @@ export const authenticate = (
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+
+    const now = Math.floor(Date.now() / 1000);
+    if (decoded.exp < now) {
+      throw new jwt.TokenExpiredError(
+        "Token expired",
+        new Date(decoded.exp * 1000),
+      );
+    }
+
     req.user = decoded;
     next();
   } catch (error) {
+    console.error("Auth error:", error);
     if (error instanceof jwt.JsonWebTokenError) {
       next(new ApiError(401, "Invalid token"));
+    } else if (error instanceof jwt.TokenExpiredError) {
+      next(new ApiError(401, "Token expired"));
     } else {
       next(error);
     }

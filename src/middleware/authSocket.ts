@@ -14,7 +14,7 @@ export default async (
       return next(new Error("Authentication required"));
     }
 
-    const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
+    const accessTokenSecret = process.env.JWT_SECRET;
     if (!accessTokenSecret) {
       throw new ApiError(500, "Access token secret not configured");
     }

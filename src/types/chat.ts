@@ -13,10 +13,10 @@ export interface ChatType extends mongoose.Document {
   lastMessage?: mongoose.Types.ObjectId;
   participants: ChatParticipant[];
   avatar: string | "";
-  admin?: string;
+  admin: string;
   type: "direct" | "group" | "channel";
   createdBy: string;
-  deletedFor: [{ user: string; deletedAt: Date }];
+  deletedFor: DeletedForEntry[];
   metadata?: {
     pinnedMessage: mongoose.Types.ObjectId[];
     customePermissions?: unknown;

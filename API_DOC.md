@@ -48,9 +48,59 @@ http://localhost:5000/api/v1
 ```
 
 ## Authentication
-All endpoints require authentication using a JWT token in the Authorization header:
+
+All API requests must include a valid JWT token in the Authorization header. The token is obtained during the login process and must be included in all subsequent requests.
+
+### Token Format
 ```
-Authorization: Bearer <jwt_token>
+Authorization: Bearer <token>
+```
+
+### Token Structure
+The JWT token contains the following claims:
+```json
+{
+  "id": "user_id",
+  "name": "user_name",
+  "avatarUrl": "avatar_url",
+  "email": "user_email",
+  "username": "username",
+  "role": "user_role",
+  "exp": 1234567890,  // Expiration time in seconds since epoch
+  "iat": 1234567890   // Issued at time in seconds since epoch
+}
+```
+
+### Token Expiration
+- Tokens are valid for 1 hour from the time of issuance
+- Expired tokens will result in a 401 Unauthorized response
+- The client should handle token expiration by redirecting to the login page
+
+### Error Responses
+
+#### 401 Unauthorized
+```json
+{
+  "statusCode": 401,
+  "message": "Invalid token" | "Token expired" | "Authentication required",
+  "success": false
+}
+```
+
+### Example Request
+```http
+GET /api/v1/chats
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### WebSocket Authentication
+WebSocket connections must also include the JWT token in the connection query parameters:
+```javascript
+const socket = io('http://localhost:5000', {
+  query: {
+    token: 'your_jwt_token'
+  }
+});
 ```
 
 ## WebSocket Events
