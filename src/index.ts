@@ -61,7 +61,7 @@ import { initializeSocketIO } from "./socket";
 import { authenticate } from "./middleware/auth";
 
 initializeSocketIO(io);
-
+console.log("Authenticating...");
 app.use(authenticate);
 // API Routes
 app.use("/api/v1/chats", chatRouter);
