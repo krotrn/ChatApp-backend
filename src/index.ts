@@ -58,11 +58,10 @@ import webhookRouter from "./routes/webhooks";
 import connectDB from "./database/db";
 import { errorHandler } from "./middleware/errorHandler";
 import { initializeSocketIO } from "./socket";
-import { authenticate } from "./middleware/auth";
 
 initializeSocketIO(io);
 console.log("Authenticating...");
-app.use(authenticate);
+
 // API Routes
 app.use("/api/v1/chats", chatRouter);
 app.use("/api/v1/messages", messageRouter);
