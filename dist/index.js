@@ -44,6 +44,13 @@ app.use(express_1.default.json({ limit: "16kb" }));
 app.use(express_1.default.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express_1.default.static("public"));
 app.use((0, cookie_parser_1.default)());
+app.get("/", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        message: "Server is running",
+        timestamp: new Date().toISOString(),
+    });
+});
 // Routes
 const chat_1 = __importDefault(require("./routes/chat"));
 const message_1 = __importDefault(require("./routes/message"));
@@ -51,15 +58,12 @@ const webhooks_1 = __importDefault(require("./routes/webhooks"));
 const db_1 = __importDefault(require("./database/db"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const socket_1 = require("./socket");
-const auth_1 = require("./middleware/auth");
 (0, socket_1.initializeSocketIO)(io);
 console.log("Authenticating...");
-app.use(auth_1.authenticate);
 // API Routes
 app.use("/api/v1/chats", chat_1.default);
 app.use("/api/v1/messages", message_1.default);
 app.use("/api/v1/webhook", webhooks_1.default);
-// Error Handling Middleware
 app.use(errorHandler_1.errorHandler);
 const PORT = process.env.PORT || 5000;
 (async () => {

@@ -17,6 +17,7 @@ const authenticate = (req, res, next) => {
         if (decoded.exp < now) {
             throw new jsonwebtoken_1.default.TokenExpiredError("Token expired", new Date(decoded.exp * 1000));
         }
+        console.log(decoded);
         req.user = decoded;
         next();
     }

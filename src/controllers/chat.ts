@@ -14,9 +14,13 @@ import { validateUser } from "../utils/userHelper";
 
 import { chatMessageCommonAggregation } from "./message";
 import type { AuthenticatedRequest } from "../types/request";
-import type { ChatParticipant, ChatType, DeletedForEntry } from "../types/chat";
-
-const chatCommonAggregation = () => {
+import type {
+  ChatParticipant,
+  ChatType,
+  DeletedForEntry,
+  ChatResponseType,
+} from "../types/chat";
+const chatCommonAggregation = (): PipelineStage[] => {
   return [
     {
       $lookup: {
@@ -57,12 +61,12 @@ const chatCommonAggregation = () => {
         lastMessage: { $arrayElemAt: ["$lastMessage", 0] },
       },
     },
-  ] as PipelineStage[];
+  ];
 };
 
 // Get All Chats
 const getAllChats = async (req: Request, res: Response): Promise<void> => {
-  const chats = await Chat.aggregate([
+  const chats: ChatResponseType[] = await Chat.aggregate([
     {
       $match: {
         participants: {
@@ -70,7 +74,7 @@ const getAllChats = async (req: Request, res: Response): Promise<void> => {
         },
         deletedFor: {
           $not: {
-            $elemMatch: { user: (req as AuthenticatedRequest).user.id },
+            $elemMatch: { userId: (req as AuthenticatedRequest).user.id },
           },
         },
       },
@@ -120,7 +124,7 @@ const createOrGetAOneOnOneChat = async (
     };
 
     // Check for existing chat
-    const existingChat = await Chat.aggregate([
+    const existingChat: ChatResponseType[] = await Chat.aggregate([
       {
         $match: {
           type: "direct",
@@ -159,21 +163,21 @@ const createOrGetAOneOnOneChat = async (
       { session },
     );
 
-    const createChat = await Chat.aggregate([
+    const createChat: ChatResponseType[] = await Chat.aggregate([
       { $match: { _id: newChatInstance[0]._id } },
       ...chatCommonAggregation(),
     ]);
 
-    const payload: ChatType = createChat[0];
+    const payload = createChat[0];
     if (!payload) {
       throw new ApiError(500, "Internal Server error");
     }
 
     await session.commitTransaction();
 
-    payload.participants.forEach(async (participant) => {
+    payload.participants.forEach((participant: ChatParticipant) => {
       if (participant.userId === currentUser.id) return;
-      await emitSocketEvent<ChatType>(
+      emitSocketEvent(
         req,
         participant.userId,
         ChatEventEnum.NEW_CHAT_EVENT,
@@ -210,7 +214,6 @@ const deleteCascadeChatMessages = async (chatId: string): Promise<void> => {
               `Failed to delete file: ${attachment.localPath}`,
               error,
             );
-            // Continue with other files even if one fails
           }
         }
       }
@@ -237,10 +240,10 @@ const deleteOneOnOneChat = async (
   try {
     const { chatId } = req.params;
     const chat = await Chat.aggregate([
-      { $match: { _id: new Types.ObjectId(chatId) } },
+      { $match: { _id: chatId } },
       ...chatCommonAggregation(),
     ]);
-    const payload: ChatType = chat[0];
+    const payload = chat[0];
 
     if (!payload) {
       throw new ApiError(404, "Chat does not exist");
@@ -250,7 +253,7 @@ const deleteOneOnOneChat = async (
     await deleteCascadeChatMessages(chatId);
 
     const otherParticipant = payload?.participants?.find(
-      (participant) =>
+      (participant: ChatParticipant) =>
         participant.userId !== (req as AuthenticatedRequest).user.id.toString(),
     );
     if (!otherParticipant) {
@@ -259,7 +262,7 @@ const deleteOneOnOneChat = async (
 
     await session.commitTransaction();
 
-    await emitSocketEvent<ChatType>(
+    emitSocketEvent(
       req,
       otherParticipant.userId,
       ChatEventEnum.DELETE_CHAT_EVENT,
@@ -282,8 +285,8 @@ const getChatById = async (req: Request, res: Response): Promise<void> => {
     throw new ApiError(404, "Chat ID is required");
   }
 
-  const chats = await Chat.aggregate([
-    { $match: { _id: new Types.ObjectId(chatId) } },
+  const chats: ChatResponseType[] = await Chat.aggregate([
+    { $match: { _id: chatId } },
     ...chatCommonAggregation(),
   ]);
   if (!chats || chats.length === 0) {
@@ -298,20 +301,28 @@ const deleteChatForMe = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
   const userId = (req as AuthenticatedRequest).user.id;
 
-  const chat = await Chat.findById(chatId);
+  const chat: ChatType | null = await Chat.findById(chatId);
   if (!chat) {
     throw new ApiError(404, "Chat not found");
   }
 
-  if (!chat.participants.some((p: ChatParticipant) => p.userId === userId)) {
+  if (
+    !chat.participants.some(
+      (participant: ChatParticipant) => participant.userId === userId,
+    )
+  ) {
     throw new ApiError(403, "You are not a participant of this chat");
   }
 
-  if (chat.deletedFor.some((df: DeletedForEntry) => df.userId === userId)) {
+  if (
+    chat.deletedFor.some(
+      (deletedForPerson: DeletedForEntry) => deletedForPerson.userId === userId,
+    )
+  ) {
     throw new ApiError(400, "Chat already deleted for you");
   }
 
-  chat.deletedFor.push({ user: userId, deletedAt: new Date() });
+  chat.deletedFor.push({ userId, deletedAt: new Date() });
   await chat.save();
 
   res
@@ -324,7 +335,10 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   const {
     name,
     participants,
-  }: { participants: ChatParticipant[]; name: string } = req.body;
+    avatarUrl,
+  }: { participants: ChatParticipant[]; name: string; avatarUrl: string } =
+    req.body;
+
   if (
     participants.some(
       (participant) =>
@@ -339,7 +353,7 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
 
   const member = [
     ...new Set([
-      ...participants.map((p) => p.userId),
+      ...participants.map((participant) => participant.userId),
       (req as AuthenticatedRequest).user.id,
     ]),
   ];
@@ -351,17 +365,33 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
     );
   }
 
-  await Promise.all(
-    participants.map(async (user) => {
-      if (!(await resilientApiCall(() => validateUser([user.userId])))) {
-        throw new ApiError(400, `User ${user.userId} not found`);
-      }
-    }),
-  );
+  try {
+    // Validate all participants exist
+    const userIds = participants.map((user) => user.userId);
+    const validUsers = await resilientApiCall(() => validateUser(userIds));
+
+    // Check if all users were found
+    if (validUsers.length !== userIds.length) {
+      // Find which users weren't found
+      const validUserIds = validUsers.map((user) => user._id);
+      const missingUserIds = userIds.filter((id) => !validUserIds.includes(id));
+
+      throw new ApiError(
+        400,
+        `The following users were not found: ${missingUserIds.join(", ")}`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, "Failed to validate users. Please try again.");
+  }
 
   const groupChat: ChatType = await Chat.create({
     name,
     type: "group",
+    avatarUrl,
     participants: member.map((userId) => ({ userId, joinedAt: new Date() })),
     admin: (req as AuthenticatedRequest).user.id,
     createdBy: (req as AuthenticatedRequest).user.id,
@@ -398,7 +428,7 @@ const getGroupChatDetails = async (
   res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
-  const groupChat: ChatType[] = await Chat.aggregate([
+  const groupChat: ChatResponseType[] = await Chat.aggregate([
     { $match: { _id: new Types.ObjectId(chatId), type: "group" } },
     ...chatCommonAggregation(),
   ]);
@@ -411,10 +441,10 @@ const getGroupChatDetails = async (
     .json(new ApiResponse(200, chat, "Group chat fetched successfully"));
 };
 
-// Rename Group Chat
-const renameGroupChat = async (req: Request, res: Response): Promise<void> => {
+// Update Group Chat
+const updateGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
-  const { name }: { name: string } = req.body;
+  const { name, avatarUrl }: { name: string; avatarUrl: string } = req.body;
   const groupChat = await Chat.findOne({
     _id: new Types.ObjectId(chatId),
     type: "group",
@@ -427,7 +457,7 @@ const renameGroupChat = async (req: Request, res: Response): Promise<void> => {
   }
   const updatedGroupChat = await Chat.findByIdAndUpdate(
     chatId,
-    { $set: { name } },
+    { $set: { name, avatarUrl } },
     { new: true },
   );
   if (!updatedGroupChat) {
@@ -459,11 +489,11 @@ const renameGroupChat = async (req: Request, res: Response): Promise<void> => {
 // Delete Group Chat
 const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
-  const groupChat = await Chat.aggregate([
+  const groupChat: ChatResponseType[] = await Chat.aggregate([
     { $match: { _id: new Types.ObjectId(chatId), type: "group" } },
     ...chatCommonAggregation(),
   ]);
-  const chat: ChatType = groupChat[0];
+  const chat: ChatResponseType = groupChat[0];
   if (!chat) {
     throw new ApiError(404, "Group chat does not exist");
   }
@@ -475,9 +505,7 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
   try {
     session.startTransaction();
     await Chat.findByIdAndDelete(chatId).session(session);
-    await ChatMessage.deleteMany({ chat: new Types.ObjectId(chatId) }).session(
-      session,
-    );
+    await ChatMessage.deleteMany({ chatId }).session(session);
     await session.commitTransaction();
   } catch (error) {
     if (error instanceof Error) {
@@ -492,7 +520,7 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
 
   chat.participants.forEach((participant) => {
     if (participant.userId === (req as AuthenticatedRequest).user.id) return;
-    emitSocketEvent<ChatType>(
+    emitSocketEvent<ChatResponseType>(
       req,
       participant.userId,
       ChatEventEnum.DELETE_CHAT_EVENT,
@@ -501,7 +529,7 @@ const deleteGroupChat = async (req: Request, res: Response): Promise<void> => {
   });
   res
     .status(200)
-    .json(new ApiResponse(200, [], "Group chat deleted successfully"));
+    .json(new ApiResponse(200, {}, "Group chat deleted successfully"));
 };
 
 // Add New Participant In Group Chat
@@ -523,7 +551,7 @@ const addNewParticipantInGroupChat = async (
   }
 
   if (
-    chat.admin?.toString() !== (req as AuthenticatedRequest).user.id.toString()
+    chat.admin.toString() !== (req as AuthenticatedRequest).user.id.toString()
   ) {
     throw new ApiError(403, "You are not an admin");
   }
@@ -540,40 +568,61 @@ const addNewParticipantInGroupChat = async (
     throw new ApiError(400, "No new participants to add");
   }
 
-  const usersToAdd = await validateUser(newParticipants);
-
-  const newParticipantObjects = usersToAdd.map((user) => ({
-    userId: user._id,
-    name: user.fullName,
-    avatarUrl: user.avatar,
-    role: "member",
-    joinedAt: new Date(),
-  }));
-
-  chat.participants.push(...newParticipantObjects);
-  await chat.save();
-
-  const chatWithParticipants = await Chat.findById(chatId).populate(
-    "participants.userId",
-    "fullName avatar",
-  );
-
-  emitSocketEvent(
-    req,
-    chatId,
-    ChatEventEnum.NEW_PARTICIPANT_ADDED_EVENT,
-    chatWithParticipants,
-  );
-
-  res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        chatWithParticipants,
-        "New participants added successfully",
-      ),
+  try {
+    const usersToAdd = await resilientApiCall(() =>
+      validateUser(newParticipants),
     );
+
+    if (usersToAdd.length !== newParticipants.length) {
+      const validUserIds = usersToAdd.map((user) => user._id);
+      const missingUserIds = newParticipants.filter(
+        (id) => !validUserIds.includes(id),
+      );
+
+      throw new ApiError(
+        400,
+        `The following users were not found: ${missingUserIds.join(", ")}`,
+      );
+    }
+
+    const newParticipantObjects = usersToAdd.map((user) => ({
+      userId: user._id,
+      name: user.fullName,
+      avatarUrl: user.avatar,
+      role: "member",
+      joinedAt: new Date(),
+    }));
+
+    chat.participants.push(...newParticipantObjects);
+    await chat.save();
+
+    const chatWithParticipants = await Chat.findById(chatId).populate(
+      "participants.userId",
+      "name avatarUrl",
+    );
+
+    emitSocketEvent(
+      req,
+      chatId,
+      ChatEventEnum.NEW_PARTICIPANT_ADDED_EVENT,
+      chatWithParticipants,
+    );
+
+    res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          chatWithParticipants,
+          "New participants added successfully",
+        ),
+      );
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, "Failed to add participants. Please try again.");
+  }
 };
 
 // Remove Participant From Group Chat
@@ -594,7 +643,7 @@ const removeParticipantFromGroupChat = async (
   }
 
   if (
-    chat.admin?.toString() !== (req as AuthenticatedRequest).user.id.toString()
+    chat.admin.toString() !== (req as AuthenticatedRequest).user.id.toString()
   ) {
     throw new ApiError(403, "You are not an admin");
   }
@@ -617,7 +666,7 @@ const removeParticipantFromGroupChat = async (
 
   const chatWithParticipants = await Chat.findById(chatId).populate(
     "participants.userId",
-    "fullName avatar",
+    "name avatarUrl",
   );
 
   emitSocketEvent(
@@ -672,7 +721,7 @@ const leaveGroupChat = async (req: Request, res: Response): Promise<void> => {
 
   const chatWithParticipants = await Chat.findById(chatId).populate(
     "participants.userId",
-    "fullName avatar",
+    "name avatarUrl",
   );
 
   emitSocketEvent(
@@ -762,7 +811,7 @@ export {
   createOrGetAOneOnOneChat,
   createAGroupChat,
   deleteGroupChat,
-  renameGroupChat,
+  updateGroupChat,
   getGroupChatDetails,
   leaveGroupChat,
   addNewParticipantInGroupChat,

@@ -12,7 +12,7 @@ import {
   leaveGroupChat,
   pinMessage,
   removeParticipantFromGroupChat,
-  renameGroupChat,
+  updateGroupChat,
   unpinMessage,
 } from "../controllers/chat";
 import { authenticate } from "../middleware/auth";
@@ -33,7 +33,7 @@ router
 router
   .route("/group/:chatId")
   .delete(authenticate, deleteGroupChat)
-  .patch(chatCreationRateLimiter, authenticate, renameGroupChat);
+  .patch(chatCreationRateLimiter, authenticate, updateGroupChat);
 
 router
   .route("/group/:chatId/participants")

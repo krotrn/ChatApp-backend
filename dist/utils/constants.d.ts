@@ -20,5 +20,7 @@ export declare const ChatEventEnum: Readonly<{
     MESSAGE_REACTION_EVENT: "messageReaction";
     NEW_PARTICIPANT_ADDED_EVENT: "newParticipantAdded";
     PARTICIPANT_LEFT_EVENT: "participantLeft";
+    MESSAGE_EDITED_EVENT: "messageEdited";
+    MESSAGE_READ_EVENT: "messageRead";
 }>;
-export declare const AvailableChatEvents: ("connected" | "disconnect" | "online" | "leaveChat" | "updateGroupName" | "messageReceived" | "newChat" | "socketError" | "stopTyping" | "typing" | "messageDeleted" | "chatDeleted" | "messagePin" | "messageReaction" | "newParticipantAdded" | "participantLeft")[];
+export declare const AvailableChatEvents: ("connected" | "disconnect" | "online" | "leaveChat" | "updateGroupName" | "messageReceived" | "newChat" | "socketError" | "stopTyping" | "typing" | "messageDeleted" | "chatDeleted" | "messagePin" | "messageReaction" | "newParticipantAdded" | "participantLeft" | "messageEdited" | "messageRead")[];

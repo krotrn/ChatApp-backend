@@ -5,8 +5,11 @@ import {
   MessageType,
   StatusEnum,
   ReactionType,
+  ReadByType,
+  User,
+  MessageResponseType,
 } from "../types/message";
-import type { ChatParticipant, ChatType } from "../types/chat";
+import type { ChatType } from "../types/chat";
 import type { AuthenticatedRequest } from "../types/request";
 import ApiError from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
@@ -30,8 +33,11 @@ export const chatMessageCommonAggregation = () => {
         status: 1,
         reactions: 1,
         edited: 1,
-        isDeleted: 1,
-        replyTo: 1,
+        edits: 1,
+        readBy: 1,
+        deletedFor: 1,
+        replyToId: 1,
+        formatting: 1,
         createdAt: 1,
         updatedAt: 1,
       },
@@ -40,11 +46,18 @@ export const chatMessageCommonAggregation = () => {
       $addFields: {
         _id: { $toString: "$_id" },
         chatId: { $toString: "$chatId" },
-        replyTo: {
+        replyToId: {
           $cond: {
-            if: { $ne: ["$replyTo", null] },
-            then: { $toString: "$replyTo" },
+            if: { $ne: ["$replyToId", null] },
+            then: { $toString: "$replyToId" },
             else: null,
+          },
+        },
+        formatting: {
+          $cond: {
+            if: { $ne: ["$formatting", null] },
+            then: "$formatting",
+            else: {},
           },
         },
       },
@@ -52,6 +65,7 @@ export const chatMessageCommonAggregation = () => {
   ];
 };
 
+// get all messages
 const getAllMessages = async (req: Request, res: Response): Promise<void> => {
   const { chatId } = req.params;
 
@@ -62,14 +76,14 @@ const getAllMessages = async (req: Request, res: Response): Promise<void> => {
 
   if (
     !selectedChat.participants.some(
-      (participant: ChatParticipant) =>
+      (participant: User) =>
         participant.userId === (req as AuthenticatedRequest).user.id,
     )
   ) {
     throw new ApiError(400, "User is not part of chat.");
   }
 
-  const messages: MessageType[] = await ChatMessage.aggregate([
+  const messages: MessageResponseType[] = await ChatMessage.aggregate([
     {
       $match: {
         chatId: new Types.ObjectId(chatId),
@@ -88,6 +102,7 @@ const getAllMessages = async (req: Request, res: Response): Promise<void> => {
     .json(new ApiResponse(200, messages, "Messages fetched successfully"));
 };
 
+// send message
 const sendMessage = async (req: Request, res: Response): Promise<void> => {
   const session = await startSession();
   session.startTransaction();
@@ -131,6 +146,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
       url: getStaticFilePath(req, attachment.filename),
       localPath: getLocalPath(attachment.filename),
       type: attachment.mimetype || "application/octet-stream",
+      status: StatusEnum.sent,
     }));
 
     const message = await ChatMessage.create(
@@ -153,7 +169,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
       { new: true, session },
     );
 
-    const messages: MessageType[] = await ChatMessage.aggregate([
+    const messages: MessageResponseType[] = await ChatMessage.aggregate([
       { $match: { _id: message[0]._id } },
       ...chatMessageCommonAggregation(),
     ]);
@@ -198,6 +214,7 @@ const sendMessage = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+// delete message
 const deleteMessage = async (req: Request, res: Response): Promise<void> => {
   const session = await startSession();
   session.startTransaction();
@@ -221,7 +238,7 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
       throw new ApiError(404, "Message does not exist");
     }
     const isAdmin = chat.admin === currentUser.id;
-    const isSender = message.sender === currentUser.id;
+    const isSender = message.sender.userId === currentUser.id;
     const isRecent =
       Date.now() - message.createdAt.getTime() < 24 * 60 * 60 * 1000;
 
@@ -286,6 +303,61 @@ const deleteMessage = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const deleteMessageForMe = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const { chatId, messageId } = req.params;
+  const currentUser = (req as AuthenticatedRequest).user;
+
+  const chat: ChatType | null = await Chat.findById(chatId);
+  if (!chat) {
+    throw new ApiError(404, "Chat does not exist");
+  }
+
+  const message: MessageType | null = await ChatMessage.findById(messageId);
+
+  if (!message) {
+    throw new ApiError(404, "Message does not exist");
+  }
+
+  const isParticipant = chat.participants.some(
+    (participant) => participant.userId === currentUser.id,
+  );
+  if (!isParticipant) {
+    throw new ApiError(403, "You are not a participant in this chat");
+  }
+
+  if (
+    message.deletedFor.some(
+      (deletedForPerson) => deletedForPerson.userId === currentUser.id,
+    )
+  ) {
+    throw new ApiError(400, "Message already deleted for you");
+  }
+
+  message.deletedFor.push({
+    userId: currentUser.id,
+    deletedAt: new Date(),
+  });
+
+  await message.save();
+
+  emitSocketEvent(
+    req,
+    currentUser.id,
+    ChatEventEnum.MESSAGE_DELETE_EVENT,
+    message,
+  );
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, message, "Message deleted for you successfully"),
+    );
+};
+
+// reply message
 const replyMessage = async (req: Request, res: Response): Promise<void> => {
   const { chatId, messageId } = req.params;
   const { content } = req.body;
@@ -300,7 +372,7 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
   }
 
   const receivers = chat.participants.filter(
-    (participant: ChatParticipant) =>
+    (participant: User) =>
       participant.userId !== (req as AuthenticatedRequest).user.id,
   );
   if (!receivers.length) {
@@ -319,7 +391,7 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
   chat.lastMessage = reply._id;
   await chat.save();
 
-  chat.participants.forEach((participant: ChatParticipant) => {
+  chat.participants.forEach((participant: User) => {
     if (participant.userId === (req as AuthenticatedRequest).user.id) return;
     emitSocketEvent(
       req,
@@ -332,6 +404,7 @@ const replyMessage = async (req: Request, res: Response): Promise<void> => {
   res.status(201).json(new ApiResponse(201, reply, "Reply sent successfully"));
 };
 
+// update message
 const updateReaction = async (req: Request, res: Response): Promise<void> => {
   const { chatId, messageId } = req.params;
   const { emoji }: { emoji: string } = req.body;
@@ -386,10 +459,188 @@ const updateReaction = async (req: Request, res: Response): Promise<void> => {
     .json(new ApiResponse(200, message, "Reaction updated successfully"));
 };
 
+// Edit Message
+const editMessage = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { chatId, messageId } = req.params;
+    const { content } = req.body;
+    const userId = (req as AuthenticatedRequest).user.id;
+
+    // Validate chat exists
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+      throw new ApiError(404, "Chat not found");
+    }
+
+    // Check if user is a participant in the chat
+    const isParticipant = chat.participants.some(
+      (participant: User) => participant.userId === userId,
+    );
+    if (!isParticipant) {
+      throw new ApiError(403, "You are not a participant in this chat");
+    }
+
+    // Retrieve the message
+    const message = await ChatMessage.findById(messageId);
+    if (!message) {
+      throw new ApiError(404, "Message not found");
+    }
+
+    // Check if the message belongs to the chat
+    if (message.chatId.toString() !== chatId) {
+      throw new ApiError(400, "Message does not belong to this chat");
+    }
+
+    // Check if the user is the sender of the message
+    if (message.sender !== userId) {
+      throw new ApiError(403, "You can only edit your own messages");
+    }
+
+    // Check if message has been deleted
+    if (message.deletedFor.includes(userId)) {
+      throw new ApiError(400, "Cannot edit a deleted message");
+    }
+
+    // Update the message
+    const previousContent = message.content;
+    message.content = content;
+    message.edited.isEdited = true;
+    message.edited.editedAt = new Date();
+
+    // Add to previous content array
+    if (!message.edited.previousContent) {
+      message.edited.previousContent = [];
+    }
+    message.edited.previousContent.push(previousContent);
+
+    // Add to edits array for more detailed tracking
+    message.edits = message.edits || [];
+    message.edits.push({
+      content: previousContent,
+      editedAt: new Date(),
+      editedBy: userId,
+    });
+
+    await message.save();
+
+    // Emit socket event for real-time updates
+    emitSocketEvent(req, chatId, ChatEventEnum.MESSAGE_EDITED_EVENT, {
+      messageId: message._id,
+      content,
+      chatId,
+      editedAt: message.edited.editedAt,
+    });
+
+    // Return success response
+    res
+      .status(200)
+      .json(new ApiResponse(200, message, "Message edited successfully"));
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * @desc    Mark messages as read
+ * @route   POST /api/v1/messages/:chatId/read
+ * @access  Private
+ */
+const markMessagesAsRead = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { chatId } = req.params;
+    const { messageIds } = req.body; // Array of message IDs to mark as read
+    const userId = (req as AuthenticatedRequest).user.id;
+
+    // Validate chat exists
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+      throw new ApiError(404, "Chat not found");
+    }
+
+    // Check if user is a participant in the chat
+    const isParticipant = chat.participants.some(
+      (participant: User) => participant.userId === userId,
+    );
+    if (!isParticipant) {
+      throw new ApiError(403, "You are not a participant in this chat");
+    }
+
+    // If no specific message IDs provided, mark all unread messages as read
+    let messages;
+    if (!messageIds || messageIds.length === 0) {
+      // Find all messages in the chat that haven't been read by the user
+      messages = await ChatMessage.find({
+        chatId,
+        isDeleted: false,
+        sender: { $ne: userId }, // Only mark messages from other users as read
+        readBy: { $not: { $elemMatch: { userId } } }, // Messages not already read by this user
+      });
+    } else {
+      // Find specific messages by IDs
+      messages = await ChatMessage.find({
+        _id: { $in: messageIds },
+        chatId,
+        isDeleted: false,
+      });
+    }
+
+    if (messages.length === 0) {
+      res
+        .status(200)
+        .json(new ApiResponse(200, [], "No messages to mark as read"));
+    }
+
+    // Update each message to mark as read by the user
+    const readAt = new Date();
+    const updatePromises = messages.map(async (message) => {
+      // Skip if user is the sender or already read
+      if (
+        message.sender === userId ||
+        message.readBy.some((read: ReadByType) => read.userId === userId)
+      ) {
+        return message;
+      }
+
+      // Add user to readBy array
+      message.readBy.push({
+        userId,
+        readAt,
+      });
+
+      return message.save();
+    });
+
+    await Promise.all(updatePromises);
+
+    // Emit socket event for real-time updates
+    emitSocketEvent(req, chatId, ChatEventEnum.MESSAGE_READ_EVENT, {
+      chatId,
+      readBy: {
+        userId,
+        readAt,
+      },
+      messageIds: messages.map((message) => message._id),
+    });
+
+    // Return success response
+    res
+      .status(200)
+      .json(new ApiResponse(200, messages, "Messages marked as read"));
+  } catch (error) {
+    throw error;
+  }
+};
+
 export {
   getAllMessages,
   sendMessage,
   deleteMessage,
   replyMessage,
   updateReaction,
+  editMessage,
+  markMessagesAsRead,
+  deleteMessageForMe,
 };

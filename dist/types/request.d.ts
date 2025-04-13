@@ -1,8 +1,6 @@
 import type { Request } from "express";
-import type { ParamsDictionary } from "express-serve-static-core";
-import type { ParsedQs } from "qs";
 import type { ChatParticipant } from "./chat";
-export interface AuthenticatedRequest<TBody = unknown, TParams extends ParamsDictionary = ParamsDictionary, TQuery = ParsedQs> extends Request<TParams, unknown, TBody, TQuery> {
+export interface AuthenticatedRequest extends Request {
     user: {
         id: string;
         name: string;
@@ -12,10 +10,13 @@ export interface AuthenticatedRequest<TBody = unknown, TParams extends ParamsDic
         role: string;
     };
 }
-export type CreateChatRequest = AuthenticatedRequest<{
-    name?: string;
-    participants: ChatParticipant[];
-    admin?: string;
-    type: "direct" | "group" | "channel";
-    createdBy: string;
-}>;
+export type CreateChatRequest = AuthenticatedRequest & {
+    body: {
+        name?: string;
+        participants: ChatParticipant[];
+        admin?: string;
+        avatarUrl?: string;
+        type: "direct" | "group" | "channel";
+        createdBy: string;
+    };
+};

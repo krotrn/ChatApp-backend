@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getChatById = exports.deleteChatForMe = exports.unpinMessage = exports.pinMessage = exports.deleteOneOnOneChat = exports.removeParticipantFromGroupChat = exports.getAllChats = exports.addNewParticipantInGroupChat = exports.leaveGroupChat = exports.getGroupChatDetails = exports.renameGroupChat = exports.deleteGroupChat = exports.createAGroupChat = exports.createOrGetAOneOnOneChat = exports.deleteCascadeChatMessages = exports.chatCommonAggregation = void 0;
+exports.getChatById = exports.deleteChatForMe = exports.unpinMessage = exports.pinMessage = exports.deleteOneOnOneChat = exports.removeParticipantFromGroupChat = exports.getAllChats = exports.addNewParticipantInGroupChat = exports.leaveGroupChat = exports.getGroupChatDetails = exports.updateGroupChat = exports.deleteGroupChat = exports.createAGroupChat = exports.createOrGetAOneOnOneChat = exports.deleteCascadeChatMessages = exports.chatCommonAggregation = void 0;
 const mongoose_1 = require("mongoose");
 const chat_models_1 = require("../models/chat.models");
 const message_models_1 = require("../models/message.models");
@@ -69,7 +69,7 @@ const getAllChats = async (req, res) => {
                 },
                 deletedFor: {
                     $not: {
-                        $elemMatch: { user: req.user.id },
+                        $elemMatch: { userId: req.user.id },
                     },
                 },
             },
@@ -146,10 +146,10 @@ const createOrGetAOneOnOneChat = async (req, res) => {
             throw new ApiError_1.default(500, "Internal Server error");
         }
         await session.commitTransaction();
-        payload.participants.forEach(async (participant) => {
+        payload.participants.forEach((participant) => {
             if (participant.userId === currentUser.id)
                 return;
-            await (0, socket_1.emitSocketEvent)(req, participant.userId, constants_1.ChatEventEnum.NEW_CHAT_EVENT, payload);
+            (0, socket_1.emitSocketEvent)(req, participant.userId, constants_1.ChatEventEnum.NEW_CHAT_EVENT, payload);
         });
         res
             .status(201)
@@ -178,7 +178,6 @@ const deleteCascadeChatMessages = async (chatId) => {
                     }
                     catch (error) {
                         console.error(`Failed to delete file: ${attachment.localPath}`, error);
-                        // Continue with other files even if one fails
                     }
                 }
             }
@@ -202,7 +201,7 @@ const deleteOneOnOneChat = async (req, res) => {
     try {
         const { chatId } = req.params;
         const chat = await chat_models_1.Chat.aggregate([
-            { $match: { _id: new mongoose_1.Types.ObjectId(chatId) } },
+            { $match: { _id: chatId } },
             ...chatCommonAggregation(),
         ]);
         const payload = chat[0];
@@ -216,7 +215,7 @@ const deleteOneOnOneChat = async (req, res) => {
             throw new ApiError_1.default(404, "Other user not found.");
         }
         await session.commitTransaction();
-        await (0, socket_1.emitSocketEvent)(req, otherParticipant.userId, constants_1.ChatEventEnum.DELETE_CHAT_EVENT, payload);
+        (0, socket_1.emitSocketEvent)(req, otherParticipant.userId, constants_1.ChatEventEnum.DELETE_CHAT_EVENT, payload);
         res.status(200).json(new ApiResponse_1.ApiResponse(200, {}, "Chat deleted successfully"));
     }
     catch (error) {
@@ -235,7 +234,7 @@ const getChatById = async (req, res) => {
         throw new ApiError_1.default(404, "Chat ID is required");
     }
     const chats = await chat_models_1.Chat.aggregate([
-        { $match: { _id: new mongoose_1.Types.ObjectId(chatId) } },
+        { $match: { _id: chatId } },
         ...chatCommonAggregation(),
     ]);
     if (!chats || chats.length === 0) {
@@ -253,13 +252,13 @@ const deleteChatForMe = async (req, res) => {
     if (!chat) {
         throw new ApiError_1.default(404, "Chat not found");
     }
-    if (!chat.participants.some((p) => p.userId === userId)) {
+    if (!chat.participants.some((participant) => participant.userId === userId)) {
         throw new ApiError_1.default(403, "You are not a participant of this chat");
     }
-    if (chat.deletedFor.some((df) => df.userId === userId)) {
+    if (chat.deletedFor.some((deletedForPerson) => deletedForPerson.userId === userId)) {
         throw new ApiError_1.default(400, "Chat already deleted for you");
     }
-    chat.deletedFor.push({ user: userId, deletedAt: new Date() });
+    chat.deletedFor.push({ userId, deletedAt: new Date() });
     await chat.save();
     res
         .status(200)
@@ -268,27 +267,41 @@ const deleteChatForMe = async (req, res) => {
 exports.deleteChatForMe = deleteChatForMe;
 // Create A Group Chat
 const createAGroupChat = async (req, res) => {
-    const { name, participants, } = req.body;
+    const { name, participants, avatarUrl, } = req.body;
     if (participants.some((participant) => participant.userId === req.user.id)) {
         throw new ApiError_1.default(400, "Participants array should not contain the group creator");
     }
     const member = [
         ...new Set([
-            ...participants.map((p) => p.userId),
+            ...participants.map((participant) => participant.userId),
             req.user.id,
         ]),
     ];
     if (member.length < 3) {
         throw new ApiError_1.default(400, "Seems like you have passed duplicate participants.");
     }
-    await Promise.all(participants.map(async (user) => {
-        if (!(await (0, apiRetry_1.resilientApiCall)(() => (0, userHelper_1.validateUser)([user.userId])))) {
-            throw new ApiError_1.default(400, `User ${user.userId} not found`);
+    try {
+        // Validate all participants exist
+        const userIds = participants.map((user) => user.userId);
+        const validUsers = await (0, apiRetry_1.resilientApiCall)(() => (0, userHelper_1.validateUser)(userIds));
+        // Check if all users were found
+        if (validUsers.length !== userIds.length) {
+            // Find which users weren't found
+            const validUserIds = validUsers.map((user) => user._id);
+            const missingUserIds = userIds.filter((id) => !validUserIds.includes(id));
+            throw new ApiError_1.default(400, `The following users were not found: ${missingUserIds.join(", ")}`);
         }
-    }));
+    }
+    catch (error) {
+        if (error instanceof ApiError_1.default) {
+            throw error;
+        }
+        throw new ApiError_1.default(500, "Failed to validate users. Please try again.");
+    }
     const groupChat = await chat_models_1.Chat.create({
         name,
         type: "group",
+        avatarUrl,
         participants: member.map((userId) => ({ userId, joinedAt: new Date() })),
         admin: req.user.id,
         createdBy: req.user.id,
@@ -327,10 +340,10 @@ const getGroupChatDetails = async (req, res) => {
         .json(new ApiResponse_1.ApiResponse(200, chat, "Group chat fetched successfully"));
 };
 exports.getGroupChatDetails = getGroupChatDetails;
-// Rename Group Chat
-const renameGroupChat = async (req, res) => {
+// Update Group Chat
+const updateGroupChat = async (req, res) => {
     const { chatId } = req.params;
-    const { name } = req.body;
+    const { name, avatarUrl } = req.body;
     const groupChat = await chat_models_1.Chat.findOne({
         _id: new mongoose_1.Types.ObjectId(chatId),
         type: "group",
@@ -341,7 +354,7 @@ const renameGroupChat = async (req, res) => {
     if (groupChat.admin !== req.user.id) {
         throw new ApiError_1.default(403, "You are not an admin");
     }
-    const updatedGroupChat = await chat_models_1.Chat.findByIdAndUpdate(chatId, { $set: { name } }, { new: true });
+    const updatedGroupChat = await chat_models_1.Chat.findByIdAndUpdate(chatId, { $set: { name, avatarUrl } }, { new: true });
     if (!updatedGroupChat) {
         throw new ApiError_1.default(404, "Cannot update name of group chat.");
     }
@@ -360,7 +373,7 @@ const renameGroupChat = async (req, res) => {
         .status(200)
         .json(new ApiResponse_1.ApiResponse(200, payload, "Group chat name updated successfully"));
 };
-exports.renameGroupChat = renameGroupChat;
+exports.updateGroupChat = updateGroupChat;
 // Delete Group Chat
 const deleteGroupChat = async (req, res) => {
     const { chatId } = req.params;
@@ -379,7 +392,7 @@ const deleteGroupChat = async (req, res) => {
     try {
         session.startTransaction();
         await chat_models_1.Chat.findByIdAndDelete(chatId).session(session);
-        await message_models_1.ChatMessage.deleteMany({ chat: new mongoose_1.Types.ObjectId(chatId) }).session(session);
+        await message_models_1.ChatMessage.deleteMany({ chatId }).session(session);
         await session.commitTransaction();
     }
     catch (error) {
@@ -400,7 +413,7 @@ const deleteGroupChat = async (req, res) => {
     });
     res
         .status(200)
-        .json(new ApiResponse_1.ApiResponse(200, [], "Group chat deleted successfully"));
+        .json(new ApiResponse_1.ApiResponse(200, {}, "Group chat deleted successfully"));
 };
 exports.deleteGroupChat = deleteGroupChat;
 // Add New Participant In Group Chat
@@ -414,7 +427,7 @@ const addNewParticipantInGroupChat = async (req, res) => {
     if (chat.type !== "group") {
         throw new ApiError_1.default(400, "This feature is only available for group chats");
     }
-    if (chat.admin?.toString() !== req.user.id.toString()) {
+    if (chat.admin.toString() !== req.user.id.toString()) {
         throw new ApiError_1.default(403, "You are not an admin");
     }
     const existingParticipants = chat.participants.map((participant) => participant.userId.toString());
@@ -422,21 +435,34 @@ const addNewParticipantInGroupChat = async (req, res) => {
     if (!newParticipants.length) {
         throw new ApiError_1.default(400, "No new participants to add");
     }
-    const usersToAdd = await (0, userHelper_1.validateUser)(newParticipants);
-    const newParticipantObjects = usersToAdd.map((user) => ({
-        userId: user._id,
-        name: user.fullName,
-        avatarUrl: user.avatar,
-        role: "member",
-        joinedAt: new Date(),
-    }));
-    chat.participants.push(...newParticipantObjects);
-    await chat.save();
-    const chatWithParticipants = await chat_models_1.Chat.findById(chatId).populate("participants.userId", "fullName avatar");
-    (0, socket_1.emitSocketEvent)(req, chatId, constants_1.ChatEventEnum.NEW_PARTICIPANT_ADDED_EVENT, chatWithParticipants);
-    res
-        .status(200)
-        .json(new ApiResponse_1.ApiResponse(200, chatWithParticipants, "New participants added successfully"));
+    try {
+        const usersToAdd = await (0, apiRetry_1.resilientApiCall)(() => (0, userHelper_1.validateUser)(newParticipants));
+        if (usersToAdd.length !== newParticipants.length) {
+            const validUserIds = usersToAdd.map((user) => user._id);
+            const missingUserIds = newParticipants.filter((id) => !validUserIds.includes(id));
+            throw new ApiError_1.default(400, `The following users were not found: ${missingUserIds.join(", ")}`);
+        }
+        const newParticipantObjects = usersToAdd.map((user) => ({
+            userId: user._id,
+            name: user.fullName,
+            avatarUrl: user.avatar,
+            role: "member",
+            joinedAt: new Date(),
+        }));
+        chat.participants.push(...newParticipantObjects);
+        await chat.save();
+        const chatWithParticipants = await chat_models_1.Chat.findById(chatId).populate("participants.userId", "name avatarUrl");
+        (0, socket_1.emitSocketEvent)(req, chatId, constants_1.ChatEventEnum.NEW_PARTICIPANT_ADDED_EVENT, chatWithParticipants);
+        res
+            .status(200)
+            .json(new ApiResponse_1.ApiResponse(200, chatWithParticipants, "New participants added successfully"));
+    }
+    catch (error) {
+        if (error instanceof ApiError_1.default) {
+            throw error;
+        }
+        throw new ApiError_1.default(500, "Failed to add participants. Please try again.");
+    }
 };
 exports.addNewParticipantInGroupChat = addNewParticipantInGroupChat;
 // Remove Participant From Group Chat
@@ -449,7 +475,7 @@ const removeParticipantFromGroupChat = async (req, res) => {
     if (chat.type !== "group") {
         throw new ApiError_1.default(400, "This feature is only available for group chats");
     }
-    if (chat.admin?.toString() !== req.user.id.toString()) {
+    if (chat.admin.toString() !== req.user.id.toString()) {
         throw new ApiError_1.default(403, "You are not an admin");
     }
     const participantExists = chat.participants.find((participant) => participant.userId.toString() === participantId);
@@ -458,7 +484,7 @@ const removeParticipantFromGroupChat = async (req, res) => {
     }
     chat.participants = chat.participants.filter((participant) => participant.userId.toString() !== participantId);
     await chat.save();
-    const chatWithParticipants = await chat_models_1.Chat.findById(chatId).populate("participants.userId", "fullName avatar");
+    const chatWithParticipants = await chat_models_1.Chat.findById(chatId).populate("participants.userId", "name avatarUrl");
     (0, socket_1.emitSocketEvent)(req, chatId, constants_1.ChatEventEnum.PARTICIPANT_LEFT_EVENT, chatWithParticipants);
     res
         .status(200)
@@ -483,7 +509,7 @@ const leaveGroupChat = async (req, res) => {
     chat.participants = chat.participants.filter((participant) => participant.userId.toString() !==
         req.user.id.toString());
     await chat.save();
-    const chatWithParticipants = await chat_models_1.Chat.findById(chatId).populate("participants.userId", "fullName avatar");
+    const chatWithParticipants = await chat_models_1.Chat.findById(chatId).populate("participants.userId", "name avatarUrl");
     (0, socket_1.emitSocketEvent)(req, chatId, constants_1.ChatEventEnum.PARTICIPANT_LEFT_EVENT, chatWithParticipants);
     res
         .status(200)

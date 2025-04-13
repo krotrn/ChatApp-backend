@@ -6,9 +6,13 @@ A robust real-time chat application backend built with Node.js, Express, TypeScr
 
 - **Real-time Communication**: WebSocket integration using Socket.IO
 - **Chat Management**: Create, read, update, and delete functionalities for both direct and group chats
-- **Message Handling**: Send, delete, pin, reply to, and react to messages
+- **Message Handling**: Send, delete, pin, reply to, react to, and edit messages
+- **Read Receipts**: Track which messages have been read by which users
+- **Message Pagination**: Optimized retrieval of large chat histories
 - **File Attachments**: Support for sending and storing file attachments
 - **User Authentication**: JWT-based authentication system
+- **Robust Error Handling**: Standardized error responses with detailed information
+- **Connection Status Monitoring**: Real-time connection health tracking
 - **Scalable Architecture**: Well-structured codebase with MVC pattern
 - **Docker Support**: Containerization for easy deployment
 
@@ -32,8 +36,8 @@ A robust real-time chat application backend built with Node.js, Express, TypeScr
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/krotrn/ChatApp-backend.git
-   cd ChatApp-backend
+   git clone https://github.com/yourusername/chat-backend.git
+   cd chat-backend
    ```
 
 2. **Install dependencies**:
@@ -50,6 +54,8 @@ A robust real-time chat application backend built with Node.js, Express, TypeScr
    ```
    # MongoDB Configuration
    MONGODB_URI=mongodb://localhost:27017/chat
+   MONGO_USER=yourusername
+   MONGO_PASSWORD=yourpassword
 
    # Application Configuration
    JWT_SECRET=your_jwt_secret_key
@@ -107,11 +113,13 @@ Authorization: Bearer <your_jwt_token>
 
 ### Message Routes
 
-- **GET /api/v1/messages/:chatId**: Get all messages in a chat
+- **GET /api/v1/messages/:chatId**: Get all messages in a chat (with pagination)
 - **POST /api/v1/messages/:chatId**: Send a message
 - **DELETE /api/v1/messages/:chatId/:messageId**: Delete a message
 - **POST /api/v1/messages/:chatId/reply**: Reply to a message
 - **PATCH /api/v1/messages/:chatId/:messageId/reaction**: Update message reaction
+- **PATCH /api/v1/messages/:chatId/:messageId/edit**: Edit a message
+- **POST /api/v1/messages/:chatId/read**: Mark messages as read
 
 ### Message Pin Routes
 
@@ -134,6 +142,8 @@ The application uses Socket.IO for real-time communication:
 - `messageDeleted`: Message deleted
 - `messageReaction`: Message reaction updated
 - `messagePin`: Message pinned/unpinned
+- `messageEdited`: Message edited
+- `messageRead`: Messages marked as read
 
 ### Chat Events
 - `newChat`: New chat created
@@ -189,6 +199,17 @@ chat-backend/
 └── README.md            # Project documentation
 ```
 
+## Recent Enhancements
+
+- **Message Editing**: Added ability to edit sent messages with history tracking
+- **Read Receipts**: Track which users have read messages in a chat
+- **Optimized Message Retrieval**: Implemented pagination for better performance with large chat histories
+- **Rich Text Support**: Added basic formatting support for messages
+- **Enhanced Error Handling**: Improved error reporting with standardized response structure
+- **Connection Monitoring**: Added built-in connection health tracking
+- **Optimistic UI Updates**: Frontend implementation now uses optimistic updates to improve UX
+- **Race Condition Prevention**: Fixed potential race conditions in read receipt handling
+
 ## Error Handling
 
 The API uses consistent error responses:
@@ -198,6 +219,26 @@ The API uses consistent error responses:
 - **403 Forbidden**: Permission denied
 - **404 Not Found**: Resource not found
 - **500 Internal Server Error**: Server-side error
+
+All error responses follow a standardized format:
+```json
+{
+  "statusCode": 404,
+  "data": null,
+  "message": "Resource not found",
+  "success": false,
+  "errors": []
+}
+```
+
+## Connection Management
+
+The application includes built-in connection status monitoring:
+
+- Real-time tracking of connection state
+- Automatic detection of network issues
+- Graceful handling of reconnection scenarios
+- Client-side connection health API
 
 ## License
 

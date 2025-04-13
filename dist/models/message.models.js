@@ -36,19 +36,52 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChatMessage = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const message_1 = require("../types/message");
-const chatMessageSchema = new mongoose_1.Schema({
-    sender: {
+const attachmentSchema = new mongoose_1.Schema({
+    name: {
         type: String,
         required: true,
-        index: true,
     },
-    receivers: [
-        {
-            type: String,
-            required: true,
-            index: true,
-        },
-    ],
+    url: String,
+    localPath: String,
+    status: {
+        type: String,
+        enum: Object.values(message_1.StatusEnum),
+        default: message_1.StatusEnum.sent,
+    },
+    type: {
+        type: String,
+        required: true,
+    },
+});
+const reactionSchema = new mongoose_1.Schema({
+    userId: String,
+    emoji: String,
+    timestamp: Date,
+});
+const editSchema = new mongoose_1.Schema({
+    content: String,
+    editedAt: { type: Date, default: Date.now },
+    editedBy: String,
+});
+const readBySchema = new mongoose_1.Schema({
+    userId: String,
+    readAt: { type: Date, default: Date.now },
+});
+const deletedForSchema = new mongoose_1.Schema({
+    userId: String,
+    deletedAt: { type: Date, default: Date.now },
+});
+const userSchema = new mongoose_1.Schema({
+    userId: String,
+    name: String,
+    avatarUrl: String,
+});
+const chatMessageSchema = new mongoose_1.Schema({
+    sender: userSchema,
+    receivers: {
+        type: [userSchema],
+        default: [],
+    },
     chatId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: "Chat",
@@ -61,44 +94,35 @@ const chatMessageSchema = new mongoose_1.Schema({
         index: true,
     },
     attachments: {
-        type: [
-            {
-                name: {
-                    type: String,
-                    required: true,
-                },
-                url: String,
-                localPath: String,
-                status: {
-                    type: String,
-                    enum: Object.values(message_1.StatusEnum),
-                    default: message_1.StatusEnum.sent,
-                },
-                type: {
-                    type: String,
-                    required: true,
-                },
-            },
-        ],
+        type: [attachmentSchema],
         default: [],
     },
-    reactions: [
-        {
-            userId: String,
-            emoji: String,
-            timestamp: Date,
-        },
-    ],
+    reactions: {
+        type: [reactionSchema],
+        default: [],
+    },
     edited: {
         isEdited: { type: Boolean, default: false },
-        editedAt: Date,
-        PreviousContent: [String],
+        editedAt: { type: Date, default: Date.now },
     },
-    isDeleted: {
-        type: Boolean,
-        default: false,
+    edits: {
+        type: [editSchema],
+        default: [],
+    },
+    readBy: {
+        type: [readBySchema],
+        default: [],
+    },
+    deletedFor: {
+        type: [deletedForSchema],
+        default: [],
     },
     replyToId: { type: mongoose_1.Schema.Types.ObjectId, ref: "ChatMessage" },
+    formatting: {
+        type: Map,
+        of: String,
+        default: new Map(),
+    },
 }, {
     timestamps: true,
 });

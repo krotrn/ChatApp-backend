@@ -1,5 +1,13 @@
 import mongoose, { Schema } from "mongoose";
 
+const participantSchema = new Schema({
+  userId: { type: String, required: true },
+  name: { type: String, required: true },
+  avatarUrl: { type: String, required: true },
+  role: { type: String, enum: ["member", "admin"], default: "member" },
+  joinedAt: { type: Date, default: Date.now },
+});
+
 const chatSchema = new Schema(
   {
     name: {
@@ -10,19 +18,11 @@ const chatSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "ChatMessage",
     },
-    avatar: {
+    avatarUrl: {
       type: String,
       default: "",
     },
-    participants: [
-      {
-        userId: { type: String, required: true },
-        name: { type: String, required: true },
-        avatarUrl: { type: String, required: true },
-        role: { type: String, enum: ["member", "admin"], default: "member" },
-        joinedAt: { type: Date, default: Date.now },
-      },
-    ],
+    participants: [participantSchema],
     admin: {
       type: String,
     },

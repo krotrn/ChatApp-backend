@@ -12,7 +12,6 @@ export const getLocalPath = (fileName: string): string => {
   return path.join(process.cwd(), "public", "images", sanitized);
 };
 
-
 export const getStaticFilePath = (req: Request, fileName: string): string => {
   const protocol = req.headers["x-forwarded-proto"] || req.protocol;
   const host = req.get("host")?.replace(/:\d+$/, "");

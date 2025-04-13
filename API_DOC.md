@@ -9,6 +9,17 @@
   - [Chat Events](#chat-events)
   - [Typing Indicators](#typing-indicators)
   - [Error Handling](#error-handling)
+- [Response Types](#response-types)
+  - [MessageResponseType](#messageresponsetype)
+  - [ChatResponseType](#chatresponsetype)
+- [Data Transformation Logic](#data-transformation-logic)
+  - [MongoDB Aggregation Pipelines](#mongodb-aggregation-pipelines)
+  - [Type Conversion](#type-conversion)
+  - [Field Projection](#field-projection)
+- [Business Logic](#business-logic)
+  - [Message Status Flow](#message-status-flow)
+  - [Chat Participant Management](#chat-participant-management)
+  - [Error Resilience](#error-resilience)
 - [Endpoints](#endpoints)
   - [Chat Management](#chat-management)
     - [Get All Chats](#get-all-chats)
@@ -30,6 +41,8 @@
     - [Delete Message](#delete-message)
     - [Reply to Message](#reply-to-message)
     - [Update Message Reaction](#update-message-reaction)
+    - [Edit Message](#edit-message)
+    - [Mark Messages as Read](#mark-messages-as-read)
   - [Message Pin Management](#message-pin-management)
     - [Pin Message](#pin-message)
     - [Unpin Message](#unpin-message)
@@ -111,16 +124,38 @@ const socket = io('http://localhost:3000', {
 - `online`: Emitted when a user comes online
 
 ### Message Events
-- `messageReceived`: Emitted when a new message is received
-- `messageDeleted`: Emitted when a message is deleted
-- `messageReaction`: Emitted when a message reaction is updated
-- `messagePin`: Emitted when a message is pinned/unpinned
+- `messageReceived`: Emitted when a new message is received. Emits a `MessageResponseType` object.
+- `messageDeleted`: Emitted when a message is deleted. Emits a `MessageResponseType` object.
+- `messageReaction`: Emitted when a message reaction is updated. Emits a `MessageResponseType` object.
+- `messagePin`: Emitted when a message is pinned/unpinned. Emits a `ChatResponseType` object.
+- `messageEdited`: Emitted when a message is edited. Emits an object with structure:
+  ```typescript
+  {
+    messageId: string;
+    content: string;
+    chatId: string;
+    editedAt: Date;
+  }
+  ```
+- `messageRead`: Emitted when messages are marked as read. Emits an object with structure:
+  ```typescript
+  {
+    chatId: string;
+    readBy: {
+      userId: string;
+      readAt: Date;
+    };
+    messageIds: string[];
+  }
+  ```
 
 ### Chat Events
-- `newChat`: Emitted when a new chat is created
-- `chatDeleted`: Emitted when a chat is deleted
-- `leaveChat`: Emitted when a user leaves a group chat
-- `updateGroupName`: Emitted when a group chat name is updated
+- `newChat`: Emitted when a new chat is created. Emits a `ChatResponseType` object.
+- `deleteChat`: Emitted when a chat is deleted. Emits a `ChatResponseType` object.
+- `leaveChat`: Emitted when a user leaves a group chat. Emits a `ChatResponseType` object.
+- `updateGroupName`: Emitted when a group chat name is updated. Emits a `ChatResponseType` object.
+- `newParticipantAdded`: Emitted when a new participant is added to a group. Emits a `ChatResponseType` object.
+- `participantLeft`: Emitted when a participant leaves a group. Emits a `ChatResponseType` object.
 
 ### Typing Indicators
 - `typing`: Emitted when a user starts typing
@@ -128,6 +163,319 @@ const socket = io('http://localhost:3000', {
 
 ### Error Handling
 - `socketError`: Emitted when a socket error occurs
+
+## Response Types
+
+The API uses standardized response types to ensure consistency across all endpoints. These types are used in both HTTP responses and WebSocket events.
+
+### MessageResponseType
+
+The `MessageResponseType` represents the structure of a message after it has been processed through the MongoDB aggregation pipeline.
+
+```typescript
+export interface MessageResponseType {
+  _id: string;                                   // String representation of MongoDB ObjectId
+  sender: User;                                  // User who sent the message
+  receivers: User[];                             // Array of users who received the message
+  chatId: string;                                // String representation of chat ObjectId
+  content: string;                               // Message content
+  attachments: AttachmentType[];                 // File attachments
+  status: StatusEnum;                            // Message status (sent, delivered, read)
+  reactions: ReactionType[];                     // User reactions to the message
+  edited: { isEdited: boolean; editedAt: Date }; // Edit status
+  edits: EditType[];                             // History of edits
+  readBy: ReadByType[];                          // Users who have read the message
+  deletedFor: DeletedForEntry[];                 // Users who have deleted the message
+  replyToId: string | null;                      // Reference to parent message if it's a reply
+  formatting: Map<string, string>;               // Message formatting options
+  createdAt: Date;                               // Creation timestamp
+  updatedAt: Date;                               // Last update timestamp
+}
+```
+
+### ChatResponseType
+
+The `ChatResponseType` represents the structure of a chat after it has been processed through the MongoDB aggregation pipeline.
+
+```typescript
+export interface ChatResponseType {
+  _id: string;                                   // String representation of MongoDB ObjectId
+  name: string;                                  // Chat name
+  lastMessage: MessageResponseType | null;       // Last message in the chat
+  avatarUrl: string;                             // Chat avatar URL
+  participants: ChatParticipant[];               // Chat participants
+  admin: string;                                 // Chat admin user ID
+  type: "direct" | "group" | "channel";          // Chat type
+  createdBy: string;                             // Creator user ID
+  deletedFor: DeletedForEntry[];                 // Users who have deleted the chat
+  metadata?: {                                   // Additional metadata
+    pinnedMessage: string[];                     // Pinned message IDs
+    customePermissions?: any;                    // Custom permissions
+  };
+  messages: MessageResponseType[];               // Chat messages
+  createdAt: Date;                               // Creation timestamp
+  updatedAt: Date;                               // Last update timestamp
+}
+```
+
+## Data Transformation Logic
+
+### MongoDB Aggregation Pipelines
+
+The API uses MongoDB aggregation pipelines to efficiently transform data before returning it to the client. Two primary aggregation pipelines are implemented:
+
+1. **chatMessageCommonAggregation**: This pipeline transforms `ChatMessage` documents into the `MessageResponseType` format by:
+   - Projecting specific fields to include in the response
+   - Converting MongoDB ObjectIds to strings for client consumption
+   - Conditionally transforming `replyToId` fields to string IDs or null
+   - Formatting message content and metadata for consistent representation
+
+```javascript
+export const chatMessageCommonAggregation = () => {
+  return [
+    {
+      $project: {
+        sender: 1,
+        receivers: 1,
+        content: 1,
+        attachments: 1,
+        status: 1,
+        reactions: 1,
+        edited: 1,
+        edits: 1,
+        readBy: 1,
+        deletedFor: 1,
+        replyToId: 1,
+        formatting: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    },
+    {
+      $addFields: {
+        _id: { $toString: "$_id" },
+        chatId: { $toString: "$chatId" },
+        replyToId: {
+          $cond: {
+            if: { $ne: ["$replyToId", null] },
+            then: { $toString: "$replyToId" },
+            else: null,
+          },
+        },
+        formatting: {
+          $cond: {
+            if: { $ne: ["$formatting", null] },
+            then: "$formatting",
+            else: {},
+          },
+        },
+      },
+    },
+  ];
+};
+```
+
+2. **chatCommonAggregation**: This pipeline transforms `Chat` documents into the `ChatResponseType` format by:
+   - Using $lookup to fetch and attach the last message
+   - Using $lookup to fetch recent messages
+   - Converting MongoDB ObjectIds to strings
+   - Structuring the response with embedded message data
+
+```javascript
+const chatCommonAggregation = () => {
+  return [
+    {
+      $lookup: {
+        from: "chatmessages",
+        let: { lastMessageId: "$lastMessage" },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ["$_id", "$$lastMessageId"] },
+            },
+          },
+          ...chatMessageCommonAggregation(),
+        ],
+        as: "lastMessage",
+      },
+    },
+    {
+      $lookup: {
+        from: "chatmessages",
+        let: { chatId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ["$chatId", "$$chatId"] },
+            },
+          },
+          ...chatMessageCommonAggregation(),
+          {
+            $sort: { createdAt: -1 },
+          },
+        ],
+        as: "messages",
+      },
+    },
+    {
+      $addFields: {
+        _id: { $toString: "$_id" },
+        lastMessage: { $arrayElemAt: ["$lastMessage", 0] },
+      },
+    },
+  ];
+};
+```
+
+### Type Conversion
+
+The API handles several types of conversions to ensure consistent data representation:
+
+1. **MongoDB ObjectId to String**: All MongoDB ObjectIds are converted to strings in API responses using the `$toString` operator in aggregation pipelines
+2. **Date Handling**: Date objects are preserved as ISO strings in the JSON response
+3. **Map to Object**: MongoDB Map fields like `formatting` are converted to regular JavaScript objects
+4. **Null Value Handling**: Fields like `replyToId` are explicitly converted to `null` when they don't exist
+
+### Field Projection
+
+The API uses selective field projection to optimize response payloads:
+
+1. **Common Fields**: Core fields like `sender`, `receivers`, and `content` are always included
+2. **Optimized Queries**: The aggregation pipelines only request fields that are needed
+3. **Consistent Structure**: The response structure remains consistent across different endpoints
+4. **Cache-Friendly**: Consistent field selection enables better HTTP caching
+
+## Business Logic
+
+### Message Status Flow
+
+Messages in the system follow a defined status flow:
+
+1. **Sent**: Initial state when a message is created
+2. **Delivered**: Updated when the message is delivered to recipients' devices
+3. **Read**: Updated when a recipient marks the message as read
+
+Tracking logic:
+- Status transitions are one-way (sent → delivered → read)
+- Each status change generates a socket event
+- Read receipts are stored per-user with timestamps
+
+```javascript
+// Example status flow logic
+const markMessagesAsRead = async (req, res) => {
+  const { chatId } = req.params;
+  const { messageIds } = req.body;
+  const userId = req.user.id;
+  const readAt = new Date();
+
+  // Update message status
+  const messages = await ChatMessage.find({
+    _id: { $in: messageIds },
+    chatId,
+  });
+
+  const updatePromises = messages.map(async (message) => {
+    // Skip if user is sender or already read
+    if (
+      message.sender.userId === userId ||
+      message.readBy.some((read) => read.userId === userId)
+    ) {
+      return message;
+    }
+
+    // Add user to readBy array
+    message.readBy.push({
+      userId,
+      readAt,
+    });
+
+    return message.save();
+  });
+
+  // Emit socket event with read status
+  emitSocketEvent(req, chatId, ChatEventEnum.MESSAGE_READ_EVENT, {
+    chatId,
+    readBy: { userId, readAt },
+    messageIds: messages.map((message) => message._id),
+  });
+
+  // Response
+  res.status(200).json(new ApiResponse(200, messages, "Messages marked as read"));
+};
+```
+
+### Chat Participant Management
+
+The API implements robust logic for managing chat participants:
+
+1. **User Validation**: Before adding users to chats, the API validates that they exist and are active
+2. **Permission Control**: Only chat admins can add/remove participants from group chats
+3. **Group Size Constraints**: Groups enforce minimum and maximum participant counts
+4. **Event Broadcasting**: Participant changes trigger events to all affected users
+5. **Resilient User Validation**: The system implements retry logic for user validation operations
+
+```javascript
+// Example participant validation with resilience
+const addNewParticipantInGroupChat = async (req, res) => {
+  const { chatId } = req.params;
+  const { participants } = req.body;
+  
+  // Validate all participants exist
+  try {
+    const usersToAdd = await resilientApiCall(() => validateUser(participants));
+    
+    // Check if all users were found
+    if (usersToAdd.length !== participants.length) {
+      // Find which users weren't found
+      const validUserIds = usersToAdd.map(user => user._id);
+      const missingUserIds = participants.filter(id => !validUserIds.includes(id));
+      
+      throw new ApiError(400, `The following users were not found: ${missingUserIds.join(", ")}`);
+    }
+    
+    // Add participants to chat
+    // ...
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, "Failed to validate users. Please try again.");
+  }
+};
+```
+
+### Error Resilience
+
+The API implements several mechanisms to ensure system stability:
+
+1. **API Call Retry**: Critical operations use the `resilientApiCall` utility to retry failed operations
+2. **Transaction Management**: Database operations that span multiple collections use MongoDB transactions
+3. **Graceful Degradation**: Non-critical features degrade gracefully when dependencies fail
+4. **Error Boundaries**: Clear separation between error types with specific handling strategies
+5. **Consistent Error Responses**: Standardized error format across all endpoints
+
+```javascript
+// Example of resilient API call utility
+export const resilientApiCall = async <T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  delay = 300
+): Promise<T> => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Progressive backoff
+      await new Promise(resolve => setTimeout(resolve, delay * attempt));
+    }
+  }
+  throw new Error("Maximum retries exceeded");
+};
+```
 
 ## Endpoints
 
@@ -147,21 +495,52 @@ Response:
       "_id": "chat_id",
       "name": "Chat Name",
       "type": "direct|group",
+      "avatarUrl": "https://example.com/avatar.jpg",
       "participants": [
         {
           "userId": "user_id",
           "name": "User Name",
-          "avatarUrl": "avatar_url"
+          "avatarUrl": "avatar_url",
+          "role": "member",
+          "joinedAt": "2023-01-01T00:00:00Z"
         }
       ],
       "admin": "admin_user_id",
       "createdBy": "creator_user_id",
       "lastMessage": {
         "_id": "message_id",
+        "sender": {
+          "userId": "user_id",
+          "name": "User Name",
+          "avatarUrl": "avatar_url"
+        },
+        "receivers": [
+          {
+            "userId": "user_id",
+            "name": "User Name",
+            "avatarUrl": "avatar_url"
+          }
+        ],
+        "chatId": "chat_id",
         "content": "Last message content",
-        "sender": "sender_id",
-        "createdAt": "2024-02-20T12:00:00Z"
-      }
+        "attachments": [],
+        "status": "sent",
+        "reactions": [],
+        "edited": {
+          "isEdited": false,
+          "editedAt": "2023-01-01T00:00:00Z"
+        },
+        "edits": [],
+        "readBy": [],
+        "deletedFor": [],
+        "replyToId": null,
+        "formatting": {},
+        "createdAt": "2023-01-01T00:00:00Z",
+        "updatedAt": "2023-01-01T00:00:00Z"
+      },
+      "messages": [],
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
     }
   ],
   "message": "User chats fetched successfully!",
@@ -622,6 +1001,93 @@ Response:
 }
 ```
 
+#### Edit Message
+```http
+PATCH /api/v1/messages/:chatId/:messageId/edit
+```
+
+Request:
+```json
+{
+  "content": "Updated message content"
+}
+```
+
+Response:
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "_id": "message_id",
+    "content": "Updated message content",
+    "sender": "sender_id",
+    "receivers": [...],
+    "chatId": "chat_id",
+    "attachments": [...],
+    "replyTo": null,
+    "reactions": [...],
+    "edited": {
+      "isEdited": true,
+      "editedAt": "2024-02-20T12:30:00Z",
+      "previousContent": ["Original message content"]
+    },
+    "edits": [
+      {
+        "content": "Original message content",
+        "editedAt": "2024-02-20T12:30:00Z",
+        "editedBy": "sender_id"
+      }
+    ],
+    "createdAt": "2024-02-20T12:00:00Z",
+    "updatedAt": "2024-02-20T12:30:00Z"
+  },
+  "message": "Message edited successfully",
+  "success": true
+}
+```
+
+#### Mark Messages as Read
+```http
+POST /api/v1/messages/:chatId/read
+```
+
+Request:
+```json
+{
+  "messageIds": ["message_id_1", "message_id_2"]  // Optional: if omitted, all unread messages will be marked as read
+}
+```
+
+Response:
+```json
+{
+  "statusCode": 200,
+  "data": [
+    {
+      "_id": "message_id_1",
+      "content": "Message content",
+      "sender": "sender_id",
+      "receivers": [...],
+      "chatId": "chat_id",
+      "attachments": [...],
+      "replyTo": null,
+      "reactions": [...],
+      "readBy": [
+        {
+          "userId": "user_id",
+          "readAt": "2024-02-20T13:00:00Z"
+        }
+      ],
+      "createdAt": "2024-02-20T12:00:00Z",
+      "updatedAt": "2024-02-20T13:00:00Z"
+    },
+    // Additional messages
+  ],
+  "message": "Messages marked as read",
+  "success": true
+}
+```
+
 ### Message Pin Management
 
 #### Pin Message
@@ -761,4 +1227,152 @@ All endpoints may return the following error responses:
   "success": false,
   "errors": []
 }
+```
+
+## Frontend Integration
+
+### Response Type Handling
+
+The API returns strongly typed responses through both HTTP and WebSocket channels. The frontend should implement proper type definitions to match these responses:
+
+```typescript
+// Define types to match API response structures
+import type { MessageResponseType, ChatResponseType } from '../types';
+
+// Use these types when consuming API responses
+async function getChatMessages(chatId: string): Promise<MessageResponseType[]> {
+  const response = await api.get(`/messages/${chatId}`);
+  return response.data.data;
+}
+
+// Type WebSocket event handlers
+socket.on(ChatEventEnum.MESSAGE_RECEIVED_EVENT, (message: MessageResponseType) => {
+  // Handle the strongly typed message object
+  addMessageToState(message);
+});
+
+socket.on(ChatEventEnum.NEW_CHAT_EVENT, (chat: ChatResponseType) => {
+  // Handle the strongly typed chat object
+  addChatToState(chat);
+});
+```
+
+All MongoDB ObjectIds are converted to strings in the API responses, so the frontend should use string IDs when making requests. When displaying data, the frontend can take advantage of the complete type information provided by the response types.
+
+### Error Handling
+
+All API responses include a standardized error structure that should be handled by the frontend. Responses follow this format:
+
+```json
+{
+  "statusCode": 200,
+  "data": { ... },
+  "message": "Success message",
+  "success": true,
+  "errors": []  // Only populated for error responses
+}
+```
+
+The frontend should:
+
+1. **Check `success` flag**: Always check the `success` boolean to determine if the request was successful
+2. **Parse error messages**: Use the `message` field for user-friendly notifications
+3. **Handle detailed errors**: For validation errors, the `errors` array contains specific field errors
+
+### Connection Management
+
+The backend includes connection monitoring. Frontends should implement:
+
+1. **Connection Health Tracking**: Monitor and store the connection state
+   ```typescript
+   let isConnectionIssue = false;
+   
+   // In API interceptors
+   api.interceptors.response.use(
+     (response) => {
+       isConnectionIssue = false;
+       return response;
+     },
+     (error) => {
+       if (!error.response) {
+         isConnectionIssue = true;
+         // Handle connection error
+       }
+       return Promise.reject(error);
+     }
+   );
+   
+   // Expose connection state
+   export const isConnectionHealthy = (): boolean => {
+     return !isConnectionIssue;
+   };
+   ```
+
+2. **Optimistic UI Updates**: Implement optimistic updates for better UX
+   ```typescript
+   // Example for marking messages as read
+   // 1. Update UI immediately
+   setMessages(prev => updateReadStatus(prev, messageIds));
+   
+   // 2. Then send API request
+   try {
+     await markMessagesAsRead({ chatId, messageIds });
+   } catch (error) {
+     // Log error but don't revert UI to avoid flickering
+     console.error("Error marking messages as read:", error);
+   }
+   ```
+
+3. **Race Condition Prevention**: Handle potential race conditions in socket events
+   ```typescript
+   // Use timestamps consistently across operations
+   const readAt = new Date();
+   
+   // Update local state with consistent timestamp
+   setMessages(prev => updateMessagesWithTimestamp(prev, readAt));
+   
+   // In socket event handler, use type checking for dates
+   const readAtDate = 
+     data.readAt instanceof Date ? data.readAt : new Date(data.readAt);
+   ```
+
+### WebSocket Event Handling
+
+For proper event handling with TypeScript:
+
+```typescript
+// Import the response types
+import type { MessageResponseType, ChatResponseType } from '../types';
+
+// Handle new messages with proper typing
+socket.on(ChatEventEnum.MESSAGE_RECEIVED_EVENT, (message: MessageResponseType) => {
+  // Implementation
+});
+
+// Handle edited messages with proper typing
+socket.on(ChatEventEnum.MESSAGE_EDITED_EVENT, (data: { 
+  messageId: string, 
+  content: string, 
+  chatId: string,
+  editedAt?: Date | string 
+}) => {
+  // Implementation
+});
+
+// Handle read receipts with proper date handling
+socket.on(ChatEventEnum.MESSAGE_READ_EVENT, (data: { 
+  chatId: string, 
+  readBy: { userId: string, readAt: Date | string },
+  messageIds: string[] 
+}) => {
+  // Implementation with date type checking
+  const readAt = data.readBy.readAt instanceof Date 
+    ? data.readBy.readAt 
+    : new Date(data.readBy.readAt);
+});
+
+// Handle chat updates
+socket.on(ChatEventEnum.NEW_CHAT_EVENT, (chat: ChatResponseType) => {
+  // Implementation
+});
 ```

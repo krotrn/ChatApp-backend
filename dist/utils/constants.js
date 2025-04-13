@@ -23,6 +23,8 @@ exports.ChatEventEnum = Object.freeze({
     MESSAGE_REACTION_EVENT: "messageReaction",
     NEW_PARTICIPANT_ADDED_EVENT: "newParticipantAdded",
     PARTICIPANT_LEFT_EVENT: "participantLeft",
+    MESSAGE_EDITED_EVENT: "messageEdited",
+    MESSAGE_READ_EVENT: "messageRead",
 });
 exports.AvailableChatEvents = Object.values(exports.ChatEventEnum);
 //# sourceMappingURL=constants.js.map

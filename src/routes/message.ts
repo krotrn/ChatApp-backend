@@ -5,6 +5,9 @@ import {
   replyMessage,
   sendMessage,
   updateReaction,
+  editMessage,
+  markMessagesAsRead,
+  deleteMessageForMe,
 } from "../controllers/message";
 import { authenticate } from "../middleware/auth";
 import {
@@ -25,16 +28,30 @@ router
     upload.array("attachments", 5),
     authenticate,
     handleUploadErrors,
-    sendMessage
+    sendMessage,
   );
 
 router
   .route("/:chatId/:messageId")
-  .delete(messageRateLimiter, authenticate, deleteMessage)
+  .delete(messageRateLimiter, authenticate, deleteMessage);
+router
+  .route("/:chatId/:messageId/me")
+  .delete(messageRateLimiter, authenticate, deleteMessageForMe);
+
+router
+  .route("/:chatId/:messageId/edit")
+  .patch(messageRateLimiter, authenticate, editMessage);
+
+router
+  .route("/:chatId/read")
+  .post(messageRateLimiter, authenticate, markMessagesAsRead);
+
+router
+  .route("/:chatId/reply")
   .post(messageRateLimiter, authenticate, replyMessage);
 
 router
   .route("/:chatId/:messageId/reaction")
-  .post(messageRateLimiter, authenticate, updateReaction);
+  .patch(messageRateLimiter, authenticate, updateReaction);
 
 export default router;
