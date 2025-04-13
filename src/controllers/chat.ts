@@ -9,7 +9,7 @@ import ApiError from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { resilientApiCall } from "../utils/apiRetry";
 import { ChatEventEnum } from "../utils/constants";
-import { removeLocalFile } from "../utils/FileOperations";
+import { removeLocalFile } from "../utils/fileOperations";
 import { validateUser } from "../utils/userHelper";
 
 import { chatMessageCommonAggregation } from "./message";
