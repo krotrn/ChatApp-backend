@@ -20,34 +20,39 @@ import { chatCreationRateLimiter } from "../middleware/rateLimit";
 
 const router = express.Router();
 
-router.use(authenticate);
 
 router
   .route("/")
-  .get(getAllChats)
-  .post(chatCreationRateLimiter, createOrGetAOneOnOneChat);
+  .get(authenticate, getAllChats)
+  .post(chatCreationRateLimiter, authenticate, createOrGetAOneOnOneChat);
 
 router
   .route("/group")
-  .post(chatCreationRateLimiter, createAGroupChat)
-  .get(getGroupChatDetails);
+  .post(chatCreationRateLimiter, authenticate, createAGroupChat)
+  .get(authenticate, getGroupChatDetails);
 
 router
   .route("/group/:chatId")
-  .delete(deleteGroupChat)
-  .patch(chatCreationRateLimiter, renameGroupChat);
+  .delete(authenticate, deleteGroupChat)
+  .patch(chatCreationRateLimiter, authenticate, renameGroupChat);
 
 router
   .route("/group/:chatId/participants")
-  .post(chatCreationRateLimiter, addNewParticipantInGroupChat)
-  .delete(removeParticipantFromGroupChat);
+  .post(chatCreationRateLimiter, authenticate, addNewParticipantInGroupChat)
+  .delete(authenticate, removeParticipantFromGroupChat);
 
-router.route("/group/:chatId/leave").post(leaveGroupChat);
+router.route("/group/:chatId/leave").post(authenticate, leaveGroupChat);
 
-router.route("/:chatId").get(getChatById).delete(deleteOneOnOneChat);
+router
+  .route("/:chatId")
+  .get(authenticate, getChatById)
+  .delete(authenticate, deleteOneOnOneChat);
 
-router.route("/:chatId/delete-for-me").delete(deleteChatForMe);
+router.route("/:chatId/delete-for-me").delete(authenticate, deleteChatForMe);
 
-router.route("/:chatId/pin/:messageId").post(pinMessage).delete(unpinMessage);
+router
+  .route("/:chatId/pin/:messageId")
+  .post(authenticate, pinMessage)
+  .delete(authenticate, unpinMessage);
 
 export default router;

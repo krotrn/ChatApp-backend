@@ -1,4 +1,4 @@
-import express from "express";
+import { Router } from "express";
 import {
   deleteMessage,
   getAllMessages,
@@ -14,7 +14,7 @@ import {
 import multer from "multer";
 import path from "path";
 
-const router = express.Router();
+const router = Router();
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(
       null,
-      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname),
+      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname)
     );
   },
 });
@@ -36,25 +36,25 @@ const upload = multer({
   },
 });
 
-router.use(authenticate);
 
 router
   .route("/:chatId")
-  .get(messageRateLimiter, getAllMessages)
+  .get(messageRateLimiter, authenticate, getAllMessages)
   .post(
     messageRateLimiter,
     fileUploadRateLimiter,
     upload.array("attachments", 5),
-    sendMessage,
+    authenticate,
+    sendMessage
   );
 
 router
   .route("/:chatId/:messageId")
-  .delete(messageRateLimiter, deleteMessage)
-  .post(messageRateLimiter, replyMessage);
+  .delete(messageRateLimiter, authenticate, deleteMessage)
+  .post(messageRateLimiter, authenticate, replyMessage);
 
 router
   .route("/:chatId/:messageId/reaction")
-  .post(messageRateLimiter, updateReaction);
+  .post(messageRateLimiter, authenticate, updateReaction);
 
 export default router;
