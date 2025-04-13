@@ -4,8 +4,7 @@ import webhook from "../controllers/webhook";
 import { authenticate } from "../middleware/auth";
 
 const router = Router();
-router.use(authenticate);
 
-router.post("/user", webhook);
+router.post("/user", authenticate, webhook);
 
 export default router;
