@@ -51,6 +51,14 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "Server is running",
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Routes
 import chatRouter from "./routes/chat";
 import messageRouter from "./routes/message";
@@ -67,7 +75,6 @@ app.use("/api/v1/chats", chatRouter);
 app.use("/api/v1/messages", messageRouter);
 app.use("/api/v1/webhook", webhookRouter);
 
-// Error Handling Middleware
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
