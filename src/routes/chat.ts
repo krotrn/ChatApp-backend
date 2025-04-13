@@ -1,4 +1,4 @@
-import express from "express";
+import { Router } from "express";
 import {
   addNewParticipantInGroupChat,
   createAGroupChat,
@@ -18,8 +18,7 @@ import {
 import { authenticate } from "../middleware/auth";
 import { chatCreationRateLimiter } from "../middleware/rateLimit";
 
-const router = express.Router();
-
+const router = Router();
 
 router
   .route("/")

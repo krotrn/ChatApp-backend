@@ -44,7 +44,7 @@
 
 ## Base URL
 ```
-http://localhost:5000/api/v1
+http://localhost:3000/api/v1
 ```
 
 ## Authentication
@@ -96,7 +96,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### WebSocket Authentication
 WebSocket connections must also include the JWT token in the connection query parameters:
 ```javascript
-const socket = io('http://localhost:5000', {
+const socket = io('http://localhost:3000', {
   query: {
     token: 'your_jwt_token'
   }
@@ -135,7 +135,7 @@ const socket = io('http://localhost:5000', {
 
 #### Get All Chats
 ```http
-GET /chats
+GET /api/v1/chats
 ```
 
 Response:
@@ -171,7 +171,7 @@ Response:
 
 #### Create or Get One-on-One Chat
 ```http
-POST /chats/chat
+POST /api/v1/chats/chat
 ```
 
 Request:
@@ -208,7 +208,7 @@ Response:
 
 #### Get Chat by ID
 ```http
-GET /chats/chat/:chatId
+GET /api/v1/chats/chat/:chatId
 ```
 
 Response:
@@ -231,7 +231,7 @@ Response:
 
 #### Delete One-on-One Chat
 ```http
-DELETE /chats/chat/:chatId
+DELETE /api/v1/chats/chat/:chatId
 ```
 
 Response:
@@ -246,7 +246,7 @@ Response:
 
 #### Delete Chat For Me
 ```http
-DELETE /chats/chat/:chatId/delete-for-me
+DELETE /api/v1/chats/chat/:chatId/me
 ```
 
 Response:
@@ -263,7 +263,7 @@ Response:
 
 #### Create Group Chat
 ```http
-POST /chats/group
+POST /api/v1/chats/group
 ```
 
 Request:
@@ -300,7 +300,7 @@ Response:
 
 #### Get Group Chat Details
 ```http
-GET /chats/group/:chatId
+GET /api/v1/chats/group/:chatId
 ```
 
 Response:
@@ -323,7 +323,7 @@ Response:
 
 #### Rename Group Chat
 ```http
-PATCH /chats/group/:chatId
+PATCH /api/v1/chats/group/:chatId
 ```
 
 Request:
@@ -353,7 +353,7 @@ Response:
 
 #### Delete Group Chat
 ```http
-DELETE /chats/group/:chatId
+DELETE /api/v1/chats/group/:chatId
 ```
 
 Response:
@@ -368,7 +368,20 @@ Response:
 
 #### Add Participant to Group
 ```http
-POST /chats/group/:chatId/participant/:participantId
+POST /api/v1/chats/group/:chatId/participants
+```
+
+Request:
+```json
+{
+  "participants": [
+    {
+      "userId": "user_id",
+      "name": "User Name",
+      "avatarUrl": "avatar_url"
+    }
+  ]
+}
 ```
 
 Response:
@@ -391,7 +404,7 @@ Response:
 
 #### Remove Participant from Group
 ```http
-DELETE /chats/group/:chatId/participant/:participantId
+DELETE /api/v1/chats/group/:chatId/participants/:userId
 ```
 
 Response:
@@ -414,7 +427,7 @@ Response:
 
 #### Leave Group Chat
 ```http
-DELETE /chats/group/:chatId/leave
+DELETE /api/v1/chats/group/:chatId/leave
 ```
 
 Response:
@@ -439,7 +452,7 @@ Response:
 
 #### Get All Messages
 ```http
-GET /messages/:chatId
+GET /api/v1/messages/:chatId
 ```
 
 Response:
@@ -485,7 +498,7 @@ Response:
 
 #### Send Message
 ```http
-POST /messages/:chatId
+POST /api/v1/messages/:chatId
 ```
 
 Request:
@@ -523,7 +536,7 @@ Response:
 
 #### Delete Message
 ```http
-DELETE /messages/:chatId/:messageId
+DELETE /api/v1/messages/:chatId/:messageId
 ```
 
 Response:
@@ -538,13 +551,14 @@ Response:
 
 #### Reply to Message
 ```http
-POST /messages/:chatId/:messageId/reply
+POST /api/v1/messages/:chatId/reply
 ```
 
 Request:
 ```json
 {
-  "content": "Reply content"
+  "content": "Reply content",
+  "replyTo": "original_message_id"
 }
 ```
 
@@ -571,7 +585,7 @@ Response:
 
 #### Update Message Reaction
 ```http
-POST /messages/:chatId/:messageId/reaction
+PATCH /api/v1/messages/:chatId/:messageId/reaction
 ```
 
 Request:
@@ -612,7 +626,7 @@ Response:
 
 #### Pin Message
 ```http
-POST /chats/chat/:chatId/pin/:messageId
+POST /api/v1/messages/:chatId/:messageId/pin
 ```
 
 Response:
@@ -628,7 +642,7 @@ Response:
     "createdBy": "creator_user_id",
     "lastMessage": {...},
     "metadata": {
-      "pinnedMessage": ["message_id"]
+      "pinnedMessages": ["message_id"]
     }
   },
   "message": "Message pinned successfully",
@@ -638,7 +652,7 @@ Response:
 
 #### Unpin Message
 ```http
-DELETE /chats/chat/:chatId/pin/:messageId
+DELETE /api/v1/messages/:chatId/:messageId/pin
 ```
 
 Response:
@@ -654,7 +668,7 @@ Response:
     "createdBy": "creator_user_id",
     "lastMessage": {...},
     "metadata": {
-      "pinnedMessage": []
+      "pinnedMessages": []
     }
   },
   "message": "Message unpinned successfully",
@@ -666,7 +680,7 @@ Response:
 
 #### User Update Webhook
 ```http
-POST /webhook/user
+POST /api/v1/webhook/user
 ```
 
 Request:
@@ -684,7 +698,9 @@ Request:
 Response:
 ```json
 {
-  "message": "User update processed"
+  "statusCode": 200,
+  "message": "User update processed",
+  "success": true
 }
 ```
 

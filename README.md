@@ -1,190 +1,212 @@
-# Chat Service Backend 🚀
+# Chat Backend
 
-This repository, **Chat_Backend**, contains the backend service for a real-time chat application. It handles CRUD operations for chats and messages using **MongoDB** for storage and provides real-time updates via **Socket.IO**. User management is handled by a separate repository, **CLIENT_REPO**, and this service interacts with CLIENT_REPO for user validation and authentication without storing user data locally in MongoDB.
+A robust real-time chat application backend built with Node.js, Express, TypeScript, MongoDB, and Socket.IO. This service handles all chat-related operations including direct messaging, group chats, message management, and real-time communication.
 
-## Features ✨
+## Features
 
-- **Chat Management**: Create, retrieve, update, and delete chats (direct and group)
-- **Message Management**: Send, retrieve, delete, and reply to messages within chats
-- **Real-time Communication**: Utilizes Socket.IO for events like new messages, typing indicators, and chat updates
-- **Authentication and Authorization**: Integrates with CLIENT_REPO for user validation using JWT tokens and an internal API key
-- **File Handling**: Supports message attachments via Multer
-- **Error Handling and Validation**: Custom error handling and request validation middleware
+- **Real-time Communication**: WebSocket integration using Socket.IO
+- **Chat Management**: Create, read, update, and delete functionalities for both direct and group chats
+- **Message Handling**: Send, delete, pin, reply to, and react to messages
+- **File Attachments**: Support for sending and storing file attachments
+- **User Authentication**: JWT-based authentication system
+- **Scalable Architecture**: Well-structured codebase with MVC pattern
+- **Docker Support**: Containerization for easy deployment
 
-## Project Overview 🔍
+## Tech Stack
 
-This service is built with **Node.js** and **TypeScript**, using **Express** for the API and **Mongoose** for MongoDB interactions. It communicates with CLIENT_REPO to validate users before performing chat-related operations, ensuring no duplicate user data is stored in MongoDB.
+- **Backend**: Node.js, Express.js
+- **Language**: TypeScript
+- **Database**: MongoDB with Mongoose ORM
+- **Real-time Communication**: Socket.IO
+- **Authentication**: JWT (JSON Web Tokens)
+- **File Handling**: Multer
+- **Containerization**: Docker and Docker Compose
 
-## Prerequisites 📋
+## Prerequisites
 
-To run this project locally, ensure you have the following installed:
+- Node.js (v14 or higher)
+- MongoDB (local or Atlas)
+- npm or yarn package manager
 
-- **Node.js** (v14 or higher)
-- **MongoDB** (local or cloud instance, e.g., MongoDB Atlas)
-- **CLIENT_REPO** (running and accessible for user management)
+## Installation and Setup
 
-## Setup and Installation 🛠️
-
-Follow these steps to set up and run the project locally:
-
-1. **Clone the Repository**:
+1. **Clone the repository**:
    ```bash
    git clone https://github.com/krotrn/ChatApp-backend.git
    cd ChatApp-backend
    ```
 
-2. **Install Dependencies**:
+2. **Install dependencies**:
    ```bash
    npm install
    ```
 
-3. **Configure Environment Variables**:
-   - Copy the example environment file:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edit `.env` and fill in the required values:
-     ```
-     PORT=5000
-     MONGODB_URI=<your-mongodb-connection-string>
-     ACCESS_TOKEN_SECRET=<jwt-secret-key>
-     CLIENT_URL=<allowed-cors-origins>
-     INTERNAL_API_KEY=<key-for-CLIENT_REPO-communication>
-     ```
+3. **Environment Configuration**:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit the `.env` file with your configuration:
+   ```
+   # MongoDB Configuration
+   MONGODB_URI=mongodb://localhost:27017/chat
 
-4. **Run the Server**:
-   - For development with hot reloading:
-     ```bash
-     npm run dev
-     ```
-   - For production (after building):
-     ```bash
-     npm run build
-     npm start
-     ```
+   # Application Configuration
+   JWT_SECRET=your_jwt_secret_key
+   NODE_ENV=development
+   PORT=3000
 
-## Project Structure 📂
+   CLIENT_URL=http://localhost:3000
+   INTERNAL_API_KEY=your_internal_api_key
+   ```
 
-Here's an overview of the key directories and files:
+4. **Start development server**:
+   ```bash
+   npm run dev
+   ```
 
-- **`src/controllers/`**: Logic for chat and message operations
-- **`src/models/`**: Mongoose schemas for chats and messages
-- **`src/routes/`**: Express routes for API endpoints
-- **`src/socket/`**: Socket.IO connection and event handling
-- **`src/types/`**: TypeScript type definitions
-- **`src/utils/`**: Utility functions (e.g., `ApiResponse`, `FileOperations`)
-- **`src/middleware/`**: Custom middleware for authentication, file uploads, etc.
-- **`src/database/db.ts`**: MongoDB connection setup
-- **`.env.example`**: Template for environment variables
-- **`package.json`**: Project dependencies and scripts
+## Scripts
 
-## API Endpoints 🌐
+- `npm run dev`: Start development server with hot-reloading
+- `npm run build`: Build the TypeScript project
+- `npm run stage`: Build and stage changes for commit
+- `npm run lint`: Run ESLint
+- `npm run lint:fix`: Fix ESLint issues
+- `npm run format`: Format code with Prettier
+- `npm run format:check`: Check formatting with Prettier
+- `npm run validate`: Run linting and format checking
 
-### Chat Routes
-- **`GET /api/v1/chats`**: Retrieve all chats for the authenticated user
-- **`POST /api/v1/chats/chat`**: Create or get a one-on-one chat
-- **`POST /api/v1/chats/group`**: Create a group chat
-- **`GET /api/v1/chats/group/:chatId`**: Get group chat details
-- **`PATCH /api/v1/chats/group/:chatId`**: Rename a group chat
-- **`DELETE /api/v1/chats/group/:chatId`**: Delete a group chat
+## API Endpoints
 
-### Message Routes
-- **`GET /api/v1/messages/:chatId`**: Get all messages in a chat
-- **`POST /api/v1/messages/:chatId`**: Send a message (supports attachments)
-- **`DELETE /api/v1/messages/:chatId/:messageId`**: Delete a message
+The API is organized around REST. All requests and responses use JSON.
 
-For more information, refer to [API Documentation](API_DOC.md)
+### Authentication
 
-*All routes require authentication via JWT tokens from CLIENT_REPO.*
-
-## Real-time Events 🔄
-
-Socket.IO is used for real-time communication. Key events include:
-
-- **`connected`**: User connects to the server
-- **`disconnect`**: User disconnects
-- **`joinChat`**: User joins a chat room
-- **`messageReceived`**: New message is sent
-- **`typing`**: User is typing
-- **`messageDeleted`**: Message is deleted
-
-See `src/utils/constants.ts` for the full list of events.
-
-## Interacting with CLIENT_REPO 🔗
-
-This service relies on **CLIENT_REPO** for user-related operations:
-
-- **User Validation**: Before chat operations, Chat_Backend calls CLIENT_REPO's internal API (`/api/v1/internal/validate/:userId`) using the `INTERNAL_API_KEY`
-- **Authentication**: JWT tokens issued by CLIENT_REPO are validated using `ACCESS_TOKEN_SECRET`
-
-
-## Database 🗄️
-
-- **MongoDB**: Stores chats and messages (no user data)
-
-Set up MongoDB instances and update `.env` with their connection URIs.
-
-## Error Handling ❌
-
-Errors are managed with a custom `ApiError` class and a global error handler middleware (`errorHandler.middleware.ts.ts`), ensuring consistent error responses.
-
-## Linting 🧹
-
-The project uses **ESLint** for code quality. Run the linter with:
-```bash
-npm run lint
+All API requests require authentication via JWT token:
+```
+Authorization: Bearer <your_jwt_token>
 ```
 
-## Deployment 🌐
+### Chat Routes
 
-To deploy the application:
+- **GET /api/v1/chats**: Get all chats for the authenticated user
+- **POST /api/v1/chats/chat**: Create or get a one-on-one chat
+- **GET /api/v1/chats/chat/:chatId**: Get chat by ID
+- **DELETE /api/v1/chats/chat/:chatId**: Delete one-on-one chat
+- **DELETE /api/v1/chats/chat/:chatId/me**: Delete chat for the current user
 
-1. **Build the Project**:
+### Group Chat Routes
+
+- **POST /api/v1/chats/group**: Create a group chat
+- **GET /api/v1/chats/group/:chatId**: Get group chat details
+- **PATCH /api/v1/chats/group/:chatId**: Rename a group chat
+- **DELETE /api/v1/chats/group/:chatId**: Delete a group chat
+- **POST /api/v1/chats/group/:chatId/participants**: Add participant to group
+- **DELETE /api/v1/chats/group/:chatId/participants/:userId**: Remove participant from group
+- **DELETE /api/v1/chats/group/:chatId/leave**: Leave a group chat
+
+### Message Routes
+
+- **GET /api/v1/messages/:chatId**: Get all messages in a chat
+- **POST /api/v1/messages/:chatId**: Send a message
+- **DELETE /api/v1/messages/:chatId/:messageId**: Delete a message
+- **POST /api/v1/messages/:chatId/reply**: Reply to a message
+- **PATCH /api/v1/messages/:chatId/:messageId/reaction**: Update message reaction
+
+### Message Pin Routes
+
+- **POST /api/v1/messages/:chatId/:messageId/pin**: Pin a message
+- **DELETE /api/v1/messages/:chatId/:messageId/pin**: Unpin a message
+
+For detailed API documentation, see [API_DOC.md](API_DOC.md).
+
+## WebSocket Events
+
+The application uses Socket.IO for real-time communication:
+
+### Connection Events
+- `connected`: User connects to the server
+- `disconnect`: User disconnects
+- `online`: User comes online
+
+### Message Events
+- `messageReceived`: New message received
+- `messageDeleted`: Message deleted
+- `messageReaction`: Message reaction updated
+- `messagePin`: Message pinned/unpinned
+
+### Chat Events
+- `newChat`: New chat created
+- `chatDeleted`: Chat deleted
+- `leaveChat`: User leaves a group chat
+- `updateGroupName`: Group chat name updated
+
+### Typing Indicators
+- `typing`: User starts typing
+- `stopTyping`: User stops typing
+
+## Docker Deployment
+
+The project includes Docker and Docker Compose configurations for easy deployment:
+
+1. **Build and run with Docker Compose**:
    ```bash
-   npm run build
+   docker-compose up -d
    ```
 
-2. **Set Up Environment Variables**:
-   - Configure `.env` in your deployment platform (e.g., Heroku, Vercel, AWS)
-   - Example:
-     ```
-     PORT=5000
-     MONGODB_URI=mongodb://<production-uri>
-     ACCESS_TOKEN_SECRET=<secret>
-     CLIENT_URL=https://your-frontend.com
-     INTERNAL_API_KEY=<key>
-     ```
-
-3. **Start the Server**:
+2. **To stop the containers**:
    ```bash
-   npm start
+   docker-compose down
    ```
 
-4. **Database and Services**:
-   - Use cloud services like MongoDB Atlas
-   - Ensure CLIENT_REPO is deployed and accessible
+The Docker Compose setup includes:
+- The Node.js application container
+- A MongoDB container with persistent storage
+- Health check configuration
 
-## Contributing 🤝
+## Project Structure
 
-Contributions are welcome! Follow these steps:
+```
+chat-backend/
+├── src/
+│   ├── controllers/     # Request handlers
+│   ├── database/        # Database connection
+│   ├── middleware/      # Custom middleware
+│   ├── models/          # Mongoose schemas
+│   ├── routes/          # API routes
+│   ├── socket/          # Socket.IO implementation
+│   ├── types/           # TypeScript types
+│   ├── utils/           # Utility functions
+│   └── index.ts         # Application entry point
+├── public/              # Public assets
+├── dist/                # Compiled JavaScript
+├── .env.example         # Example environment variables
+├── .gitignore           # Git ignore file
+├── docker-compose.yml   # Docker Compose configuration
+├── Dockerfile           # Docker configuration
+├── package.json         # Dependencies and scripts
+├── tsconfig.json        # TypeScript configuration
+└── README.md            # Project documentation
+```
+
+## Error Handling
+
+The API uses consistent error responses:
+
+- **400 Bad Request**: Invalid input
+- **401 Unauthorized**: Authentication failure
+- **403 Forbidden**: Permission denied
+- **404 Not Found**: Resource not found
+- **500 Internal Server Error**: Server-side error
+
+## License
+
+This project is licensed under the [ISC License](LICENSE).
+
+## Contributing
 
 1. Fork the repository
-2. Create a feature or bugfix branch:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. Commit your changes:
-   ```bash
-   git commit -m "Add your feature"
-   ```
-4. Push to your fork:
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-5. Submit a pull request
-
-Please adhere to the code style enforced by ESLint.
-
-## License 📜
-
-This project is licensed under the [MIT License](LICENSE).
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
