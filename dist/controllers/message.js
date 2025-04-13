@@ -9,8 +9,8 @@ const message_models_1 = require("../models/message.models");
 const message_1 = require("../types/message");
 const ApiError_1 = __importDefault(require("../utils/ApiError"));
 const ApiResponse_1 = require("../utils/ApiResponse");
-const FileOperations_1 = require("../utils/FileOperations");
-const FileOperations_2 = require("../utils/FileOperations");
+const fileOperations_1 = require("../utils/fileOperations");
+const fileOperations_2 = require("../utils/fileOperations");
 const userHelper_1 = require("../utils/userHelper");
 const validators_1 = require("../utils/validators");
 const mongoose_1 = require("mongoose");
@@ -107,8 +107,8 @@ const sendMessage = async (req, res) => {
         }
         const messageFiles = attachments.map((attachment) => ({
             name: attachment.filename,
-            url: (0, FileOperations_2.getStaticFilePath)(req, attachment.filename),
-            localPath: (0, FileOperations_1.getLocalPath)(attachment.filename),
+            url: (0, fileOperations_2.getStaticFilePath)(req, attachment.filename),
+            localPath: (0, fileOperations_1.getLocalPath)(attachment.filename),
             type: attachment.mimetype || "application/octet-stream",
         }));
         const message = await message_models_1.ChatMessage.create([
@@ -181,7 +181,7 @@ const deleteMessage = async (req, res) => {
         if (message.attachments.length > 0) {
             for (const asset of message.attachments) {
                 try {
-                    await (0, FileOperations_1.removeLocalFile)(asset.localPath);
+                    await (0, fileOperations_1.removeLocalFile)(asset.localPath);
                 }
                 catch (error) {
                     console.error(`Failed to delete file: ${asset.localPath}`, error);

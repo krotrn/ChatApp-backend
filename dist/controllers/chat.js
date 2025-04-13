@@ -12,7 +12,7 @@ const ApiError_1 = __importDefault(require("../utils/ApiError"));
 const ApiResponse_1 = require("../utils/ApiResponse");
 const apiRetry_1 = require("../utils/apiRetry");
 const constants_1 = require("../utils/constants");
-const FileOperations_1 = require("../utils/FileOperations");
+const fileOperations_1 = require("../utils/fileOperations");
 const userHelper_1 = require("../utils/userHelper");
 const message_1 = require("./message");
 const chatCommonAggregation = () => {
@@ -174,7 +174,7 @@ const deleteCascadeChatMessages = async (chatId) => {
             if (message.attachments?.length) {
                 for (const attachment of message.attachments) {
                     try {
-                        await (0, FileOperations_1.removeLocalFile)(attachment.localPath);
+                        await (0, fileOperations_1.removeLocalFile)(attachment.localPath);
                     }
                     catch (error) {
                         console.error(`Failed to delete file: ${attachment.localPath}`, error);

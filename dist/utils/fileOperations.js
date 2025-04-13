@@ -24,4 +24,4 @@ const getStaticFilePath = (req, fileName) => {
     return `${protocol}://${host}/images/${fileName}`;
 };
 exports.getStaticFilePath = getStaticFilePath;
-//# sourceMappingURL=FileOperations.js.map
+//# sourceMappingURL=fileOperations.js.map
