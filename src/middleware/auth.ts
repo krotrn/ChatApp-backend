@@ -26,9 +26,14 @@ export const authenticate = (
   next: NextFunction,
 ) => {
   try {
+
+    if (req.method === "OPTIONS") {
+      return next();
+    }
+    console.log(req.headers)
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) {
-      throw new ApiError(401, "Authentication required");
+      throw new ApiError(401, "Authentication required token is missing.");
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;

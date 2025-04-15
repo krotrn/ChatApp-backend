@@ -6,7 +6,7 @@ export const validateUser = async (
 ): Promise<Array<{ id: string; fullName: string; avatar: string | null }>> => {
   try {
     const { data } = await axios.post(
-      `${process.env.CLIENT_URL}/api/v1/internal/validate/bulk`,
+      `${process.env.VALIDATION_URL?.split(',')[1]}/api/v1/internal/validate/bulk`,
       { userIds },
       {
         headers: {
@@ -28,6 +28,7 @@ export const validateUser = async (
         error.response?.data?.error || "User validation failed"
       );
     }
+    console.log(error)
     throw new ApiError(500, "Internal server error during validation");
   }
 };
