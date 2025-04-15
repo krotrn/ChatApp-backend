@@ -38,9 +38,12 @@ router
 router
   .route("/group/:chatId/participants")
   .post(chatCreationRateLimiter, authenticate, addNewParticipantInGroupChat)
+router
+  .route("/group/:chatId/participants/:userId")
   .delete(authenticate, removeParticipantFromGroupChat);
 
-router.route("/group/:chatId/leave").post(authenticate, leaveGroupChat);
+router.route("/group/:chatId/leave")
+  .delete(authenticate, leaveGroupChat);
 
 router
   .route("/:chatId")

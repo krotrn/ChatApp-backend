@@ -1,5 +1,5 @@
 export declare const validateUser: (userIds: string[]) => Promise<Array<{
-    _id: string;
+    id: string;
     fullName: string;
-    avatar: string;
+    avatar: string | null;
 }>>;

@@ -373,7 +373,7 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
     // Check if all users were found
     if (validUsers.length !== userIds.length) {
       // Find which users weren't found
-      const validUserIds = validUsers.map((user) => user._id);
+      const validUserIds = validUsers.map((user) => user.id);
       const missingUserIds = userIds.filter((id) => !validUserIds.includes(id));
 
       throw new ApiError(
@@ -574,7 +574,7 @@ const addNewParticipantInGroupChat = async (
     );
 
     if (usersToAdd.length !== newParticipants.length) {
-      const validUserIds = usersToAdd.map((user) => user._id);
+      const validUserIds = usersToAdd.map((user) => user.id);
       const missingUserIds = newParticipants.filter(
         (id) => !validUserIds.includes(id),
       );
@@ -586,7 +586,7 @@ const addNewParticipantInGroupChat = async (
     }
 
     const newParticipantObjects = usersToAdd.map((user) => ({
-      userId: user._id,
+      userId: user.id,
       name: user.fullName,
       avatarUrl: user.avatar,
       role: "member",
@@ -630,7 +630,7 @@ const removeParticipantFromGroupChat = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const { chatId, participantId } = req.params;
+  const { chatId, userId } = req.params;
 
   const chat = await Chat.findById(chatId);
 
@@ -650,7 +650,7 @@ const removeParticipantFromGroupChat = async (
 
   const participantExists = chat.participants.find(
     (participant: ChatParticipant) =>
-      participant.userId.toString() === participantId,
+      participant.userId.toString() === userId.toString(),
   );
 
   if (!participantExists) {
@@ -659,7 +659,7 @@ const removeParticipantFromGroupChat = async (
 
   chat.participants = chat.participants.filter(
     (participant: ChatParticipant) =>
-      participant.userId.toString() !== participantId,
+      participant.userId.toString() !== userId.toString(),
   );
 
   await chat.save();

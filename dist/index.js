@@ -23,12 +23,16 @@ const io = new socket_io_1.Server(httpServer, {
     pingTimeout: 60000,
     cors: {
         origin: allowedOrigins,
+        methods: ["GET", "POST"],
+        allowedHeaders: ["Content-Type", "Authorization"],
         credentials: true,
     },
 });
 app.set("io", io);
 app.use((0, cors_1.default)({
     origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
 }));
 app.use(request_ip_1.default.mw());

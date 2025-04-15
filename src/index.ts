@@ -24,6 +24,8 @@ const io = new Server(httpServer, {
   pingTimeout: 60000,
   cors: {
     origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   },
 });
@@ -32,6 +34,8 @@ app.set("io", io);
 app.use(
   cors({
     origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [ "Content-Type", "Authorization" ],
     credentials: true,
   }),
 );

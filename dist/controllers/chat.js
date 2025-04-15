@@ -287,7 +287,7 @@ const createAGroupChat = async (req, res) => {
         // Check if all users were found
         if (validUsers.length !== userIds.length) {
             // Find which users weren't found
-            const validUserIds = validUsers.map((user) => user._id);
+            const validUserIds = validUsers.map((user) => user.id);
             const missingUserIds = userIds.filter((id) => !validUserIds.includes(id));
             throw new ApiError_1.default(400, `The following users were not found: ${missingUserIds.join(", ")}`);
         }
@@ -438,12 +438,12 @@ const addNewParticipantInGroupChat = async (req, res) => {
     try {
         const usersToAdd = await (0, apiRetry_1.resilientApiCall)(() => (0, userHelper_1.validateUser)(newParticipants));
         if (usersToAdd.length !== newParticipants.length) {
-            const validUserIds = usersToAdd.map((user) => user._id);
+            const validUserIds = usersToAdd.map((user) => user.id);
             const missingUserIds = newParticipants.filter((id) => !validUserIds.includes(id));
             throw new ApiError_1.default(400, `The following users were not found: ${missingUserIds.join(", ")}`);
         }
         const newParticipantObjects = usersToAdd.map((user) => ({
-            userId: user._id,
+            userId: user.id,
             name: user.fullName,
             avatarUrl: user.avatar,
             role: "member",
@@ -467,7 +467,7 @@ const addNewParticipantInGroupChat = async (req, res) => {
 exports.addNewParticipantInGroupChat = addNewParticipantInGroupChat;
 // Remove Participant From Group Chat
 const removeParticipantFromGroupChat = async (req, res) => {
-    const { chatId, participantId } = req.params;
+    const { chatId, userId } = req.params;
     const chat = await chat_models_1.Chat.findById(chatId);
     if (!chat) {
         throw new ApiError_1.default(404, "Chat does not exist");
@@ -478,11 +478,11 @@ const removeParticipantFromGroupChat = async (req, res) => {
     if (chat.admin.toString() !== req.user.id.toString()) {
         throw new ApiError_1.default(403, "You are not an admin");
     }
-    const participantExists = chat.participants.find((participant) => participant.userId.toString() === participantId);
+    const participantExists = chat.participants.find((participant) => participant.userId.toString() === userId.toString());
     if (!participantExists) {
         throw new ApiError_1.default(404, "Participant does not exist in the group chat");
     }
-    chat.participants = chat.participants.filter((participant) => participant.userId.toString() !== participantId);
+    chat.participants = chat.participants.filter((participant) => participant.userId.toString() !== userId.toString());
     await chat.save();
     const chatWithParticipants = await chat_models_1.Chat.findById(chatId).populate("participants.userId", "name avatarUrl");
     (0, socket_1.emitSocketEvent)(req, chatId, constants_1.ChatEventEnum.PARTICIPANT_LEFT_EVENT, chatWithParticipants);

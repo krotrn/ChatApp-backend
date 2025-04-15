@@ -19,9 +19,12 @@ router
     .patch(rateLimit_1.chatCreationRateLimiter, auth_1.authenticate, chat_1.updateGroupChat);
 router
     .route("/group/:chatId/participants")
-    .post(rateLimit_1.chatCreationRateLimiter, auth_1.authenticate, chat_1.addNewParticipantInGroupChat)
+    .post(rateLimit_1.chatCreationRateLimiter, auth_1.authenticate, chat_1.addNewParticipantInGroupChat);
+router
+    .route("/group/:chatId/participants/:userId")
     .delete(auth_1.authenticate, chat_1.removeParticipantFromGroupChat);
-router.route("/group/:chatId/leave").post(auth_1.authenticate, chat_1.leaveGroupChat);
+router.route("/group/:chatId/leave")
+    .delete(auth_1.authenticate, chat_1.leaveGroupChat);
 router
     .route("/:chatId")
     .get(auth_1.authenticate, chat_1.getChatById)
