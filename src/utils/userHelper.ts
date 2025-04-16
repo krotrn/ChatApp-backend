@@ -6,7 +6,7 @@ export const validateUser = async (
 ): Promise<Array<{ id: string; fullName: string; avatar: string | null }>> => {
   try {
     const { data } = await axios.post(
-      `${process.env.VALIDATION_URL?.split(',')[1]}/api/v1/internal/validate/bulk`,
+      `${process.env.VALIDATION_URL}/api/v1/internal/validate/bulk`,
       { userIds },
       {
         headers: {
