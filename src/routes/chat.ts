@@ -46,7 +46,7 @@ router.route("/group/:chatId/leave")
   .delete(authenticate, leaveGroupChat);
 
 router
-  .route("/:chatId")
+  .route("/chat/:chatId")
   .get(authenticate, getChatById)
   .delete(authenticate, deleteOneOnOneChat);
 

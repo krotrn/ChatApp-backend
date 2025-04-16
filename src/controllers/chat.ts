@@ -242,7 +242,7 @@ const deleteOneOnOneChat = async (
   try {
     const { chatId } = req.params;
     const chat = await Chat.aggregate([
-      { $match: { _id: chatId } },
+      { $match: { _id: new Types.ObjectId(chatId) } },
       ...chatCommonAggregation(),
     ]).session(session);
     const payload = chat[0];
@@ -288,7 +288,7 @@ const getChatById = async (req: Request, res: Response): Promise<void> => {
   }
 
   const chats: ChatResponseType[] = await Chat.aggregate([
-    { $match: { _id: chatId } },
+    { $match: { _id: new Types.ObjectId(chatId) } },
     ...chatCommonAggregation(),
   ]);
   if (!chats || chats.length === 0) {

@@ -30,7 +30,6 @@ export const authenticate = (
     if (req.method === "OPTIONS") {
       return next();
     }
-    console.log(req.headers)
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) {
       throw new ApiError(401, "Authentication required token is missing.");
