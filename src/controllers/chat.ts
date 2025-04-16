@@ -111,7 +111,6 @@ const createOrGetAOneOnOneChat = async (
       throw new ApiError(400, "You cannot chat with yourself");
     }
 
-    // Validate other participant first
     const usersToAdd = await validateUser([otherParticipant.userId]);
     if (!usersToAdd.length) {
       throw new ApiError(403, "Invalid User.");
@@ -368,13 +367,10 @@ const createAGroupChat = async (req: Request, res: Response): Promise<void> => {
   }
 
   try {
-    // Validate all participants exist
     const userIds = participants.map((user) => user.userId);
     const validUsers = await resilientApiCall(() => validateUser(userIds));
 
-    // Check if all users were found
     if (validUsers.length !== userIds.length) {
-      // Find which users weren't found
       const validUserIds = validUsers.map((user) => user.id);
       const missingUserIds = userIds.filter((id) => !validUserIds.includes(id));
 
