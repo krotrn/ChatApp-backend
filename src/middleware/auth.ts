@@ -26,7 +26,6 @@ export const authenticate = (
   next: NextFunction,
 ) => {
   try {
-
     if (req.method === "OPTIONS") {
       return next();
     }
