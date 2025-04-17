@@ -20,7 +20,7 @@ import type {
 // Delete Cascade Chat Messages - Helper function
 export const deleteCascadeChatMessages = async (
   chatId: string,
-  session: ClientSession
+  session: ClientSession,
 ): Promise<void> => {
   try {
     const messages = await ChatMessage.find({ chatId });
@@ -33,7 +33,7 @@ export const deleteCascadeChatMessages = async (
           } catch (error) {
             console.error(
               `Failed to delete file: ${attachment.localPath}`,
-              error
+              error,
             );
           }
         }
@@ -49,7 +49,7 @@ export const deleteCascadeChatMessages = async (
 // Create or Get A One-on-One Chat
 export const createOrGetAOneOnOneChat = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const session = await startSession();
   session.startTransaction();
@@ -98,7 +98,7 @@ export const createOrGetAOneOnOneChat = async (
       res
         .status(200)
         .json(
-          new ApiResponse(200, existingChat[0], "Chat retrieved successfully")
+          new ApiResponse(200, existingChat[0], "Chat retrieved successfully"),
         );
       return;
     }
@@ -114,7 +114,7 @@ export const createOrGetAOneOnOneChat = async (
           createdBy: currentUser.id,
         },
       ],
-      { session }
+      { session },
     );
 
     const createChat: ChatResponseType[] = await Chat.aggregate([
@@ -135,7 +135,7 @@ export const createOrGetAOneOnOneChat = async (
         req,
         participant.userId,
         ChatEventEnum.NEW_CHAT_EVENT,
-        payload
+        payload,
       );
     });
 
@@ -153,7 +153,7 @@ export const createOrGetAOneOnOneChat = async (
 // Delete One-on-One Chat
 export const deleteOneOnOneChat = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const session = await startSession();
   session.startTransaction();
@@ -185,7 +185,7 @@ export const deleteOneOnOneChat = async (
         req,
         participant.userId,
         ChatEventEnum.CHAT_DELETED_EVENT,
-        payload
+        payload,
       );
     });
 
@@ -203,7 +203,7 @@ export const deleteOneOnOneChat = async (
 // Get Chat By Id
 export const getChatById = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const chat: ChatResponseType[] = await Chat.aggregate([
     { $match: { _id: new Types.ObjectId(req.params.chatId) } },
@@ -222,7 +222,7 @@ export const getChatById = async (
 // Delete Chat For Me
 export const deleteChatForMe = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
   const currentUser = (req as AuthenticatedRequest).user;
@@ -234,7 +234,7 @@ export const deleteChatForMe = async (
 
   if (
     !chat.participants.some(
-      (participant: ChatParticipant) => participant.userId === currentUser.id
+      (participant: ChatParticipant) => participant.userId === currentUser.id,
     )
   ) {
     throw new ApiError(400, "You are not part of this chat");
@@ -243,7 +243,7 @@ export const deleteChatForMe = async (
   // Check if already deleted
   if (
     chat.deletedFor.some(
-      (deletedFor: DeletedForEntry) => deletedFor.userId === currentUser.id
+      (deletedFor: DeletedForEntry) => deletedFor.userId === currentUser.id,
     )
   ) {
     throw new ApiError(400, "Chat already deleted");
@@ -259,44 +259,43 @@ export const deleteChatForMe = async (
         },
       },
     },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedChat) {
     throw new ApiError(500, "Internal server error");
   }
 
+  if (updatedChat.deletedFor.length === chat.participants.length) {
+    console.log("Deleting chat as all participants have deleted it");
+    // Deleting chat as all participants have deleted it
+    try {
+      const session = await startSession();
+      session.startTransaction();
 
-if (updatedChat.deletedFor.length === chat.participants.length) {
-  console.log("Deleting chat as all participants have deleted it");
-  // Deleting chat as all participants have deleted it
-  try {
-    const session = await startSession();
-    session.startTransaction();
-    
-    await deleteCascadeChatMessages(chatId, session);
-    await Chat.findByIdAndDelete(chatId).session(session);
-    
-    await session.commitTransaction();
-    session.endSession();
-    
-    // Notify all participants
-    chat.participants.forEach((participant: ChatParticipant) => {
-      emitSocketEvent(
-        req,
-        participant.userId,
-        ChatEventEnum.CHAT_DELETED_EVENT,
-        { _id: chatId }
-      );
-    });
-    
-    console.log("Chat deleted successfully after all participants have left");
-  } catch (error) {
-    console.log(error);
-    res.status(500).json(new ApiResponse(500, null, "Error deleting chat"));
-    return;
+      await deleteCascadeChatMessages(chatId, session);
+      await Chat.findByIdAndDelete(chatId).session(session);
+
+      await session.commitTransaction();
+      session.endSession();
+
+      // Notify all participants
+      chat.participants.forEach((participant: ChatParticipant) => {
+        emitSocketEvent(
+          req,
+          participant.userId,
+          ChatEventEnum.CHAT_DELETED_EVENT,
+          { _id: chatId },
+        );
+      });
+
+      console.log("Chat deleted successfully after all participants have left");
+    } catch (error) {
+      console.log(error);
+      res.status(500).json(new ApiResponse(500, null, "Error deleting chat"));
+      return;
+    }
   }
-}
 
   res.status(200).json(new ApiResponse(200, null, "Chat deleted successfully"));
 };

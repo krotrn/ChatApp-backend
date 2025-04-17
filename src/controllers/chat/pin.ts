@@ -8,11 +8,11 @@ import { ApiResponse } from "../../utils/ApiResponse";
 import { ChatEventEnum } from "../../utils/constants";
 import type { AuthenticatedRequest } from "../../types/request";
 import type { ChatParticipant, ChatType } from "../../types/chat";
-import { MessageType } from "src/types/message";
+import { MessageType } from "../../types/message";
 // Pin Message
 export const pinMessage = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId, messageId } = req.params;
   const currentUser = (req as AuthenticatedRequest).user;
@@ -24,7 +24,7 @@ export const pinMessage = async (
 
   if (
     !chat.participants.some(
-      (participant: ChatParticipant) => participant.userId === currentUser.id
+      (participant: ChatParticipant) => participant.userId === currentUser.id,
     )
   ) {
     throw new ApiError(400, "You are not a participant of this chat");
@@ -42,7 +42,7 @@ export const pinMessage = async (
   // Check if already pinned
   if (
     chat.metadata.pinnedMessage.some(
-      (pin: Types.ObjectId) => pin.toString() === messageId
+      (pin: Types.ObjectId) => pin.toString() === messageId,
     )
   ) {
     throw new ApiError(400, "Message is already pinned");
@@ -55,7 +55,7 @@ export const pinMessage = async (
         "metadata.pinnedMessage": new Types.ObjectId(messageId),
       },
     },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedChat) {
@@ -73,14 +73,18 @@ export const pinMessage = async (
   res
     .status(200)
     .json(
-      new ApiResponse(200, { chatId, messageId }, "Message pinned successfully")
+      new ApiResponse(
+        200,
+        { chatId, messageId },
+        "Message pinned successfully",
+      ),
     );
 };
 
 // Unpin Message
 export const unpinMessage = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId, messageId } = req.params;
   const currentUser = (req as AuthenticatedRequest).user;
@@ -92,7 +96,7 @@ export const unpinMessage = async (
 
   if (
     !chat.participants.some(
-      (participant: ChatParticipant) => participant.userId === currentUser.id
+      (participant: ChatParticipant) => participant.userId === currentUser.id,
     )
   ) {
     throw new ApiError(400, "You are not a participant of this chat");
@@ -101,7 +105,7 @@ export const unpinMessage = async (
   // Check if message is pinned
   if (
     !chat.metadata.pinnedMessage.some(
-      (pin: Types.ObjectId) => pin.toString() === messageId
+      (pin: Types.ObjectId) => pin.toString() === messageId,
     )
   ) {
     throw new ApiError(400, "Message is not pinned");
@@ -114,7 +118,7 @@ export const unpinMessage = async (
         "metadata.pinnedMessage": new Types.ObjectId(messageId),
       },
     },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedChat) {
@@ -135,7 +139,7 @@ export const unpinMessage = async (
       new ApiResponse(
         200,
         { chatId, messageId },
-        "Message unpinned successfully"
-      )
+        "Message unpinned successfully",
+      ),
     );
 };

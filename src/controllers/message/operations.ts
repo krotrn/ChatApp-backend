@@ -28,10 +28,28 @@ import { emitSocketEvent } from "../../socket";
 import { ChatEventEnum } from "../../utils/constants";
 import { chatMessageCommonAggregation } from "./aggregations";
 
+interface MessageDataType {
+  sender: User;
+  receivers: User[];
+  chatId: Types.ObjectId;
+  content: string;
+  attachments: AttachmentType[];
+  status: StatusEnum;
+  reactions: ReactionType[];
+  edited: { isEdited: boolean; editedAt: Date };
+  edits: EditType[];
+  readBy: ReadByType[];
+  deletedFor: DeletedForEntry[];
+  formatting: Record<string, unknown>;
+  createdAt: Date;
+  updatedAt: Date;
+  replyToId?: Types.ObjectId;
+}
+
 // Get all messages
 export const getAllMessages = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
   const { page = "1", limit = "50", before, after } = req.query;
@@ -56,7 +74,7 @@ export const getAllMessages = async (
   if (
     !selectedChat.participants.some(
       (participant: User) =>
-        participant.userId === (req as AuthenticatedRequest).user.id
+        participant.userId === (req as AuthenticatedRequest).user.id,
     )
   ) {
     throw new ApiError(400, "User is not part of chat.");
@@ -98,15 +116,15 @@ export const getAllMessages = async (
           hasMore: total > skip + limitNumber,
         },
       },
-      "Messages fetched successfully"
-    )
+      "Messages fetched successfully",
+    ),
   );
 };
 
 // Send message
 export const sendMessage = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const session = await startSession();
   session.startTransaction();
@@ -133,7 +151,7 @@ export const sendMessage = async (
     const receivers: User[] = selectedChat.participants
       .filter(
         (participant) =>
-          participant.userId !== (req as AuthenticatedRequest).user.id
+          participant.userId !== (req as AuthenticatedRequest).user.id,
       )
       .map((participant: ChatParticipant) => ({
         userId: participant.userId,
@@ -165,23 +183,7 @@ export const sendMessage = async (
     };
 
     const currentDate = new Date();
-    const messageData: {
-      sender: User;
-      receivers: User[];
-      chatId: Types.ObjectId;
-      content: string;
-      attachments: AttachmentType[];
-      status: StatusEnum;
-      reactions: ReactionType[];
-      edited: { isEdited: boolean; editedAt: Date };
-      edits: EditType[];
-      readBy: ReadByType[];
-      deletedFor: DeletedForEntry[];
-      formatting: Record<string, unknown>;
-      createdAt: Date;
-      updatedAt: Date;
-      replyToId?: Types.ObjectId;
-    } = {
+    const messageData: MessageDataType = {
       sender,
       receivers,
       chatId: new Types.ObjectId(chatId),
@@ -214,7 +216,7 @@ export const sendMessage = async (
     const updateChat = await Chat.findByIdAndUpdate(
       chatId,
       { $set: { lastMessage: message[0]._id } },
-      { new: true, session }
+      { new: true, session },
     );
 
     const messages: MessageResponseType[] = await ChatMessage.aggregate([
@@ -233,7 +235,7 @@ export const sendMessage = async (
         req,
         chatId,
         ChatEventEnum.MESSAGE_RECEIVED_EVENT,
-        receivedMessage
+        receivedMessage,
       );
     } else {
       for (const participant of updateChat.participants) {
@@ -243,7 +245,7 @@ export const sendMessage = async (
           req,
           participant.userId,
           ChatEventEnum.MESSAGE_RECEIVED_EVENT,
-          receivedMessage
+          receivedMessage,
         );
       }
     }
@@ -251,7 +253,7 @@ export const sendMessage = async (
     res
       .status(201)
       .json(
-        new ApiResponse(201, receivedMessage, "Message saved successfully")
+        new ApiResponse(201, receivedMessage, "Message saved successfully"),
       );
   } catch (error) {
     await session.abortTransaction();
@@ -264,7 +266,7 @@ export const sendMessage = async (
 // Delete message
 export const deleteMessage = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const session = await startSession();
   session.startTransaction();
@@ -277,7 +279,7 @@ export const deleteMessage = async (
     if (
       !chat ||
       !chat.participants.some(
-        (participant) => participant.userId === currentUser.id
+        (participant) => participant.userId === currentUser.id,
       )
     ) {
       throw new ApiError(404, "Chat does not exist");
@@ -296,7 +298,7 @@ export const deleteMessage = async (
     if (!isAdmin && !isSender) {
       throw new ApiError(
         403,
-        "You don't have permission to delete this message"
+        "You don't have permission to delete this message",
       );
     }
 
@@ -320,7 +322,7 @@ export const deleteMessage = async (
       await Chat.findByIdAndUpdate(
         chatId,
         { lastMessage: lastMessage[0]?._id || null },
-        { session }
+        { session },
       );
     }
 
@@ -336,7 +338,7 @@ export const deleteMessage = async (
           messageId,
           chatId,
           deletedBy: currentUser.id,
-        }
+        },
       );
     });
 
@@ -354,7 +356,7 @@ export const deleteMessage = async (
 // Delete message for me
 export const deleteMessageForMe = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId, messageId } = req.params;
   const currentUser = (req as AuthenticatedRequest).user;
@@ -363,7 +365,7 @@ export const deleteMessageForMe = async (
   if (
     !chat ||
     !chat.participants.some(
-      (participant: ChatParticipant) => participant.userId === currentUser.id
+      (participant: ChatParticipant) => participant.userId === currentUser.id,
     )
   ) {
     throw new ApiError(404, "Chat does not exist");
@@ -377,7 +379,7 @@ export const deleteMessageForMe = async (
   if (
     message.deletedFor &&
     message.deletedFor.some(
-      (user: DeletedForEntry) => user.userId === currentUser.id
+      (user: DeletedForEntry) => user.userId === currentUser.id,
     )
   ) {
     throw new ApiError(400, "Message already deleted");
@@ -395,7 +397,7 @@ export const deleteMessageForMe = async (
 // Update reaction
 export const updateReaction = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId, messageId } = req.params;
   const { emoji } = req.body;
@@ -412,7 +414,7 @@ export const updateReaction = async (
 
   if (
     !chat.participants.some(
-      (participant: ChatParticipant) => participant.userId === currentUser.id
+      (participant: ChatParticipant) => participant.userId === currentUser.id,
     )
   ) {
     throw new ApiError(400, "You are not part of this chat");
@@ -424,7 +426,7 @@ export const updateReaction = async (
   }
 
   const userReactionIndex = message.reactions.findIndex(
-    (reaction: ReactionType) => reaction.userId === currentUser.id
+    (reaction: ReactionType) => reaction.userId === currentUser.id,
   );
 
   let updatedMessage: MessageType | null;
@@ -434,7 +436,7 @@ export const updateReaction = async (
       updatedMessage = await ChatMessage.findByIdAndUpdate(
         messageId,
         { $pull: { reactions: { userId: currentUser.id } } },
-        { new: true }
+        { new: true },
       );
     } else {
       updatedMessage = await ChatMessage.findOneAndUpdate(
@@ -445,7 +447,7 @@ export const updateReaction = async (
             "reactions.$.timestamp": new Date(),
           },
         },
-        { new: true }
+        { new: true },
       );
     }
   } else {
@@ -460,7 +462,7 @@ export const updateReaction = async (
           },
         },
       },
-      { new: true }
+      { new: true },
     );
   }
   if (!updatedMessage) {
@@ -473,21 +475,21 @@ export const updateReaction = async (
       req,
       participant.userId,
       ChatEventEnum.MESSAGE_EDITED_EVENT,
-      updatedMessage
+      updatedMessage,
     );
   });
 
   res
     .status(200)
     .json(
-      new ApiResponse(200, updatedMessage, "Reaction updated successfully")
+      new ApiResponse(200, updatedMessage, "Reaction updated successfully"),
     );
 };
 
 // Edit message
 export const editMessage = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId, messageId } = req.params;
   const { content, replyToId } = req.body;
@@ -533,7 +535,7 @@ export const editMessage = async (
           edits,
         },
       },
-      { new: true }
+      { new: true },
     );
 
   if (!updatedMessage) {
@@ -546,7 +548,7 @@ export const editMessage = async (
       req,
       participant.userId,
       ChatEventEnum.MESSAGE_EDITED_EVENT,
-      updatedMessage
+      updatedMessage,
     );
   });
 
@@ -558,7 +560,7 @@ export const editMessage = async (
 // Mark messages as read
 export const markMessagesAsRead = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
   const { messageIds } = req.body;
@@ -572,7 +574,7 @@ export const markMessagesAsRead = async (
   if (
     !chat ||
     !chat.participants.some(
-      (participant: ChatParticipant) => participant.userId === currentUser.id
+      (participant: ChatParticipant) => participant.userId === currentUser.id,
     )
   ) {
     throw new ApiError(404, "Chat does not exist or you're not a participant");
@@ -608,7 +610,7 @@ export const markMessagesAsRead = async (
       new ApiResponse(
         200,
         { modifiedCount: result.modifiedCount },
-        "Messages marked as read"
-      )
+        "Messages marked as read",
+      ),
     );
 };

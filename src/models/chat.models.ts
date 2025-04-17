@@ -64,7 +64,7 @@ const chatSchema = new Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 chatSchema.index({ participants: 1, updatedAt: -1 });

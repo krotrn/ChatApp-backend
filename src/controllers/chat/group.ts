@@ -18,7 +18,7 @@ import { deleteCascadeChatMessages } from "./one-on-one";
 // Create A Group Chat
 export const createAGroupChat = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const session = await startSession();
   session.startTransaction();
@@ -66,7 +66,7 @@ export const createAGroupChat = async (
           createdBy: currentUser.id,
         },
       ],
-      { session }
+      { session },
     );
 
     const groupChat: ChatResponseType[] = await Chat.aggregate([
@@ -88,7 +88,7 @@ export const createAGroupChat = async (
         req,
         participant.userId,
         ChatEventEnum.NEW_CHAT_EVENT,
-        payload
+        payload,
       );
     });
 
@@ -106,7 +106,7 @@ export const createAGroupChat = async (
 // Get Group Chat Details
 export const getGroupChatDetails = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const chat: ChatResponseType[] = await Chat.aggregate([
     { $match: { _id: new Types.ObjectId(req.params.chatId) } },
@@ -125,7 +125,7 @@ export const getGroupChatDetails = async (
 // Update Group Chat
 export const updateGroupChat = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
   const { name, avatarUrl } = req.body;
@@ -156,7 +156,7 @@ export const updateGroupChat = async (
   const updatedChat: ChatResponseType | null = await Chat.findByIdAndUpdate(
     chatId,
     { $set: updateData },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedChat) {
@@ -169,7 +169,7 @@ export const updateGroupChat = async (
       req,
       participant.userId,
       ChatEventEnum.CHAT_UPDATED_EVENT,
-      updatedChat
+      updatedChat,
     );
   });
 
@@ -181,7 +181,7 @@ export const updateGroupChat = async (
 // Delete Group Chat
 export const deleteGroupChat = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
   const currentUser = (req as AuthenticatedRequest).user;
@@ -211,7 +211,7 @@ export const deleteGroupChat = async (
       req,
       participant.userId,
       ChatEventEnum.CHAT_DELETED_EVENT,
-      chat
+      chat,
     );
   });
 
@@ -223,7 +223,7 @@ export const deleteGroupChat = async (
 // Add New Participant In Group Chat
 export const addNewParticipantInGroupChat = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
   const { participants } = req.body;
@@ -250,10 +250,10 @@ export const addNewParticipantInGroupChat = async (
 
   // Filter existing participants
   const existingParticipantIds = chat.participants.map(
-    (p: ChatParticipant) => p.userId
+    (p: ChatParticipant) => p.userId,
   );
   const newUserIds = userIds.filter(
-    (id: string) => !existingParticipantIds.includes(id)
+    (id: string) => !existingParticipantIds.includes(id),
   );
 
   if (!newUserIds.length) {
@@ -266,13 +266,13 @@ export const addNewParticipantInGroupChat = async (
   }
 
   const newUserParticipants = participants.filter((p: ChatParticipant) =>
-    newUserIds.includes(p.userId)
+    newUserIds.includes(p.userId),
   );
 
   const updatedChat: ChatType | null = await Chat.findByIdAndUpdate(
     chatId,
     { $push: { participants: { $each: newUserParticipants } } },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedChat) {
@@ -292,7 +292,7 @@ export const addNewParticipantInGroupChat = async (
       req,
       participant.userId,
       ChatEventEnum.CHAT_UPDATED_EVENT,
-      payload
+      payload,
     );
   });
 
@@ -309,7 +309,7 @@ export const addNewParticipantInGroupChat = async (
 // Remove Participant From Group Chat
 export const removeParticipantFromGroupChat = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId, userId } = req.params;
   const currentUser = (req as AuthenticatedRequest).user;
@@ -338,7 +338,7 @@ export const removeParticipantFromGroupChat = async (
   const updatedChat: ChatType | null = await Chat.findByIdAndUpdate(
     chatId,
     { $pull: { participants: { userId } } },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedChat) {
@@ -358,7 +358,7 @@ export const removeParticipantFromGroupChat = async (
       req,
       participant.userId,
       ChatEventEnum.CHAT_UPDATED_EVENT,
-      payload
+      payload,
     );
   });
 
@@ -373,7 +373,7 @@ export const removeParticipantFromGroupChat = async (
 // Leave Group Chat
 export const leaveGroupChat = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
   const currentUser = (req as AuthenticatedRequest).user;
@@ -398,7 +398,7 @@ export const leaveGroupChat = async (
   if (chat.admin === currentUser.id) {
     // If admin is leaving, assign new admin
     const nonAdminParticipants = chat.participants.filter(
-      (p: ChatParticipant) => p.userId !== currentUser.id
+      (p: ChatParticipant) => p.userId !== currentUser.id,
     );
 
     if (nonAdminParticipants.length === 0) {
@@ -419,12 +419,12 @@ export const leaveGroupChat = async (
             req,
             participant.userId,
             ChatEventEnum.CHAT_DELETED_EVENT,
-            { _id: chatId }
+            { _id: chatId },
           );
         });
 
         console.log(
-          "Chat deleted successfully after all participants have left"
+          "Chat deleted successfully after all participants have left",
         );
       } catch (error) {
         console.log(error);
@@ -442,14 +442,14 @@ export const leaveGroupChat = async (
         $pull: { participants: { userId: currentUser.id } },
         $set: { admin: newAdmin.userId },
       },
-      { new: true }
+      { new: true },
     );
   } else {
     // Non-admin leaving
     updatedChat = await Chat.findByIdAndUpdate(
       chatId,
       { $pull: { participants: { userId: currentUser.id } } },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -470,7 +470,7 @@ export const leaveGroupChat = async (
       req,
       participant.userId,
       ChatEventEnum.CHAT_UPDATED_EVENT,
-      chatPayload
+      chatPayload,
     );
   });
 

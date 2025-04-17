@@ -27,7 +27,7 @@ router
     upload.array("attachments", 5),
     authenticate,
     handleUploadErrors,
-    sendMessage
+    sendMessage,
   );
 
 router

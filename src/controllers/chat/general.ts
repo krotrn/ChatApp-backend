@@ -9,18 +9,17 @@ import ApiError from "../../utils/ApiError";
 // Get All Chats
 export const getAllChats = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const { limit = "10", page = "1" } = req.query;
   const pageNumber = parseInt(page as string, 10);
   const limitNumber = parseInt(limit as string, 10);
-  console.log("pageNumber", pageNumber);
   if (
     isNaN(pageNumber) ||
     isNaN(limitNumber) ||
     pageNumber < 1 ||
     limitNumber < 1 ||
-    limitNumber > 100 
+    limitNumber > 100
   ) {
     throw new ApiError(400, "Invalid page or limit number");
   }
@@ -61,7 +60,7 @@ export const getAllChats = async (
           hasMore: total > pageNumber * limitNumber,
         },
       },
-      "User chats fetched successfully!"
-    )
+      "User chats fetched successfully!",
+    ),
   );
 };

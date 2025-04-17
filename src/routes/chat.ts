@@ -30,7 +30,6 @@ router
   .get(authenticate, getChatById)
   .delete(authenticate, deleteOneOnOneChat);
 
-
 router.route("/:chatId/me").delete(authenticate, deleteChatForMe);
 router
   .route("/group")
@@ -50,7 +49,6 @@ router
   .delete(authenticate, removeParticipantFromGroupChat);
 
 router.route("/group/:chatId/leave").delete(authenticate, leaveGroupChat);
-
 
 router
   .route("/:chatId/pin/:messageId")
