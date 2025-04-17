@@ -1,22 +1,23 @@
 import { Router } from "express";
+import { authenticate } from "../middleware/auth";
+import { chatCreationRateLimiter } from "../middleware/rateLimit";
+import { getAllChats } from "../controllers/chat/general";
+import {
+  createOrGetAOneOnOneChat,
+  deleteChatForMe,
+  deleteOneOnOneChat,
+  getChatById,
+} from "../controllers/chat/one-on-one";
 import {
   addNewParticipantInGroupChat,
   createAGroupChat,
-  createOrGetAOneOnOneChat,
-  deleteChatForMe,
   deleteGroupChat,
-  deleteOneOnOneChat,
-  getAllChats,
-  getChatById,
   getGroupChatDetails,
   leaveGroupChat,
-  pinMessage,
   removeParticipantFromGroupChat,
   updateGroupChat,
-  unpinMessage,
-} from "../controllers/chat";
-import { authenticate } from "../middleware/auth";
-import { chatCreationRateLimiter } from "../middleware/rateLimit";
+} from "../controllers/chat/group";
+import { pinMessage, unpinMessage } from "../controllers/chat/pin";
 
 const router = Router();
 
@@ -27,13 +28,13 @@ router
 
 router
   .route("/group")
-  .post(chatCreationRateLimiter, authenticate, createAGroupChat)
-  .get(authenticate, getGroupChatDetails);
+  .post(chatCreationRateLimiter, authenticate, createAGroupChat);
 
 router
   .route("/group/:chatId")
-  .delete(authenticate, deleteGroupChat)
-  .patch(chatCreationRateLimiter, authenticate, updateGroupChat);
+  .get(authenticate, getGroupChatDetails)
+  .patch(chatCreationRateLimiter, authenticate, updateGroupChat)
+  .delete(authenticate, deleteGroupChat);
 
 router
   .route("/group/:chatId/participants")
@@ -49,7 +50,7 @@ router
   .get(authenticate, getChatById)
   .delete(authenticate, deleteOneOnOneChat);
 
-router.route("/:chatId/delete-for-me").delete(authenticate, deleteChatForMe);
+router.route("/:chatId/me").delete(authenticate, deleteChatForMe);
 
 router
   .route("/:chatId/pin/:messageId")

@@ -1,14 +1,4 @@
 import { Router } from "express";
-import {
-  deleteMessage,
-  getAllMessages,
-  replyMessage,
-  sendMessage,
-  updateReaction,
-  editMessage,
-  markMessagesAsRead,
-  deleteMessageForMe,
-} from "../controllers/message";
 import { authenticate } from "../middleware/auth";
 import {
   messageRateLimiter,
@@ -16,6 +6,16 @@ import {
 } from "../middleware/rateLimit";
 import { upload } from "../middleware/multer";
 import { handleUploadErrors } from "../middleware/handleUploadErrors";
+import {
+  deleteMessage,
+  deleteMessageForMe,
+  editMessage,
+  getAllMessages,
+  markMessagesAsRead,
+  replyMessage,
+  sendMessage,
+  updateReaction,
+} from "../controllers/message/operations";
 
 const router = Router();
 
@@ -28,7 +28,7 @@ router
     upload.array("attachments", 5),
     authenticate,
     handleUploadErrors,
-    sendMessage,
+    sendMessage
   );
 
 router
@@ -47,8 +47,15 @@ router
   .post(messageRateLimiter, authenticate, markMessagesAsRead);
 
 router
-  .route("/:chatId/reply")
-  .post(messageRateLimiter, authenticate, replyMessage);
+  .route("/:chatId/:messageId/reply")
+  .post(
+    messageRateLimiter,
+    fileUploadRateLimiter,
+    upload.array("attachments", 5),
+    authenticate,
+    handleUploadErrors,
+    replyMessage
+  );
 
 router
   .route("/:chatId/:messageId/reaction")

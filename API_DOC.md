@@ -95,6 +95,7 @@ The JWT token contains the following claims:
 ```json
 {
   "statusCode": 401,
+  "data": null,
   "message": "Invalid token" | "Token expired" | "Authentication required",
   "success": false
 }
@@ -151,7 +152,7 @@ const socket = io('http://localhost:3000', {
 
 ### Chat Events
 - `newChat`: Emitted when a new chat is created. Emits a `ChatResponseType` object.
-- `deleteChat`: Emitted when a chat is deleted. Emits a `ChatResponseType` object.
+- `chatDeleted`: Emitted when a chat is deleted. Emits a `ChatResponseType` object.
 - `leaveChat`: Emitted when a user leaves a group chat. Emits a `ChatResponseType` object.
 - `updateGroupName`: Emitted when a group chat name is updated. Emits a `ChatResponseType` object.
 - `newParticipantAdded`: Emitted when a new participant is added to a group. Emits a `ChatResponseType` object.
@@ -187,7 +188,7 @@ export interface MessageResponseType {
   readBy: ReadByType[];                          // Users who have read the message
   deletedFor: DeletedForEntry[];                 // Users who have deleted the message
   replyToId: string | null;                      // Reference to parent message if it's a reply
-  formatting: Map<string, string>;               // Message formatting options
+  formatting: Record<string, string>;            // Message formatting options
   createdAt: Date;                               // Creation timestamp
   updatedAt: Date;                               // Last update timestamp
 }
@@ -209,8 +210,8 @@ export interface ChatResponseType {
   createdBy: string;                             // Creator user ID
   deletedFor: DeletedForEntry[];                 // Users who have deleted the chat
   metadata?: {                                   // Additional metadata
-    pinnedMessage: string[];                     // Pinned message IDs
-    customePermissions?: any;                    // Custom permissions
+    pinnedMessages: string[];                    // Pinned message IDs
+    customPermissions?: any;                     // Custom permissions
   };
   messages: MessageResponseType[];               // Chat messages
   createdAt: Date;                               // Creation timestamp
@@ -392,159 +393,129 @@ const markMessagesAsRead = async (req, res) => {
     return message.save();
   });
 
+  await Promise.all(updatePromises);
+
   // Emit socket event with read status
   emitSocketEvent(req, chatId, ChatEventEnum.MESSAGE_READ_EVENT, {
     chatId,
     readBy: { userId, readAt },
-    messageIds: messages.map((message) => message._id),
+    messageIds: messages.map((message) => message._id.toString()),
   });
 
-  // Response
-  res.status(200).json(new ApiResponse(200, messages, "Messages marked as read"));
+  return res.status(200).json({
+    statusCode: 200,
+    success: true,
+    message: "Messages marked as read",
+    data: {
+      chatId,
+      readBy: { userId, readAt },
+      messageIds: messages.map((message) => message._id.toString()),
+    },
+  });
 };
 ```
 
 ### Chat Participant Management
 
-The API implements robust logic for managing chat participants:
+The system enforces rules for chat participant management:
 
-1. **User Validation**: Before adding users to chats, the API validates that they exist and are active
-2. **Permission Control**: Only chat admins can add/remove participants from group chats
-3. **Group Size Constraints**: Groups enforce minimum and maximum participant counts
-4. **Event Broadcasting**: Participant changes trigger events to all affected users
-5. **Resilient User Validation**: The system implements retry logic for user validation operations
+1. **Direct Chats**: Limited to exactly 2 participants
+2. **Group Chats**: 
+   - Require at least 2 participants
+   - Have an admin who has special privileges
+   - Support adding/removing participants
+   - Allow participants to leave
 
 ```javascript
-// Example participant validation with resilience
-const addNewParticipantInGroupChat = async (req, res) => {
-  const { chatId } = req.params;
-  const { participants } = req.body;
-  
-  // Validate all participants exist
-  try {
-    const usersToAdd = await resilientApiCall(() => validateUser(participants));
-    
-    // Check if all users were found
-    if (usersToAdd.length !== participants.length) {
-      // Find which users weren't found
-      const validUserIds = usersToAdd.map(user => user._id);
-      const missingUserIds = participants.filter(id => !validUserIds.includes(id));
-      
-      throw new ApiError(400, `The following users were not found: ${missingUserIds.join(", ")}`);
-    }
-    
-    // Add participants to chat
-    // ...
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    throw new ApiError(500, "Failed to validate users. Please try again.");
+// Example group chat creation logic
+const createGroupChat = async (req, res) => {
+  const { name, participants } = req.body;
+  const userId = req.user.id;
+
+  // Validate participants
+  if (!participants || participants.length < 1) {
+    return res.status(400).json({
+      statusCode: 400,
+      success: false,
+      message: "At least one participant is required",
+      data: null,
+    });
   }
+
+  // Create group chat
+  const chat = await Chat.create({
+    name,
+    type: "group",
+    participants: [
+      { userId, role: "admin" },
+      ...participants.map(id => ({ userId: id, role: "member" })),
+    ],
+    admin: userId,
+    createdBy: userId,
+  });
+
+  // Transform and return chat
+  const transformedChat = await Chat.aggregate([
+    { $match: { _id: chat._id } },
+    ...chatCommonAggregation(),
+  ]).exec();
+
+  // Emit socket event
+  emitSocketEvent(
+    req,
+    participants,
+    ChatEventEnum.NEW_CHAT_EVENT,
+    transformedChat[0]
+  );
+
+  return res.status(201).json({
+    statusCode: 201,
+    success: true,
+    message: "Group chat created successfully",
+    data: transformedChat[0],
+  });
 };
 ```
 
 ### Error Resilience
 
-The API implements several mechanisms to ensure system stability:
+The API implements several strategies for error resilience:
 
-1. **API Call Retry**: Critical operations use the `resilientApiCall` utility to retry failed operations
-2. **Transaction Management**: Database operations that span multiple collections use MongoDB transactions
-3. **Graceful Degradation**: Non-critical features degrade gracefully when dependencies fail
-4. **Error Boundaries**: Clear separation between error types with specific handling strategies
-5. **Consistent Error Responses**: Standardized error format across all endpoints
-
-```javascript
-// Example of resilient API call utility
-export const resilientApiCall = async <T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  delay = 300
-): Promise<T> => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (attempt === maxRetries) {
-        throw error;
-      }
-      
-      // Progressive backoff
-      await new Promise(resolve => setTimeout(resolve, delay * attempt));
-    }
-  }
-  throw new Error("Maximum retries exceeded");
-};
-```
+1. **Retry Mechanisms**: Critical operations use retry logic with exponential backoff
+2. **Validation Layers**: Input validation at multiple levels (route, controller, model)
+3. **Transaction Support**: Multi-document operations use MongoDB transactions
+4. **Graceful Degradation**: Fall back to basic functionality when advanced features fail
+5. **Connection Recovery**: Automatic reconnection for both HTTP and WebSocket connections
 
 ## Endpoints
 
 ### Chat Management
 
 #### Get All Chats
-```http
-GET /api/v1/chats
-```
 
-Response:
+Retrieves all chats for the authenticated user.
+
+**URL**: `/api/v1/chats`  
+**Method**: `GET`  
+**Auth Required**: Yes
+
+**Query Parameters**:
+- `limit` (optional): Number of chats to retrieve (default: 10)
+- `page` (optional): Page number for pagination (default: 1)
+
+**Success Response**:
 ```json
 {
   "statusCode": 200,
-  "data": [
-    {
-      "_id": "chat_id",
-      "name": "Chat Name",
-      "type": "direct|group",
-      "avatarUrl": "https://example.com/avatar.jpg",
-      "participants": [
-        {
-          "userId": "user_id",
-          "name": "User Name",
-          "avatarUrl": "avatar_url",
-          "role": "member",
-          "joinedAt": "2023-01-01T00:00:00Z"
-        }
-      ],
-      "admin": "admin_user_id",
-      "createdBy": "creator_user_id",
-      "lastMessage": {
-        "_id": "message_id",
-        "sender": {
-          "userId": "user_id",
-          "name": "User Name",
-          "avatarUrl": "avatar_url"
-        },
-        "receivers": [
-          {
-            "userId": "user_id",
-            "name": "User Name",
-            "avatarUrl": "avatar_url"
-          }
-        ],
-        "chatId": "chat_id",
-        "content": "Last message content",
-        "attachments": [],
-        "status": "sent",
-        "reactions": [],
-        "edited": {
-          "isEdited": false,
-          "editedAt": "2023-01-01T00:00:00Z"
-        },
-        "edits": [],
-        "readBy": [],
-        "deletedFor": [],
-        "replyToId": null,
-        "formatting": {},
-        "createdAt": "2023-01-01T00:00:00Z",
-        "updatedAt": "2023-01-01T00:00:00Z"
-      },
-      "messages": [],
-      "createdAt": "2023-01-01T00:00:00Z",
-      "updatedAt": "2023-01-01T00:00:00Z"
-    }
-  ],
-  "message": "User chats fetched successfully!",
-  "success": true
+  "success": true,
+  "message": "Chats retrieved successfully",
+  "data": {
+    "chats": [ChatResponseType],
+    "totalChats": 25,
+    "totalPages": 3,
+    "currentPage": 1,
+    "hasNextPage": true
+  }
 }
 ```
 

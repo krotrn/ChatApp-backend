@@ -1,7 +1,6 @@
-import { PipelineStage } from "mongoose";
-import { chatMessageCommonAggregation } from "../message";
+import { chatMessageCommonAggregation } from "../message/aggregations";
 
-export const chatCommonAggregation = (): PipelineStage[] => {
+export const chatCommonAggregation = () => {
   return [
     {
       $lookup: {

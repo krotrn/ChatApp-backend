@@ -38,11 +38,23 @@ export const pinMessage = async (
     throw new ApiError(400, "Message does not belong to this chat");
   }
 
+  // Initialize metadata if not exists
+  if (!chat.metadata) {
+    chat.metadata = { pinnedMessage: [] };
+  } else if (!chat.metadata.pinnedMessage) {
+    chat.metadata.pinnedMessage = [];
+  }
+
+  // Check if already pinned
+  if (chat.metadata.pinnedMessage.some((pin: Types.ObjectId) => pin.toString() === messageId)) {
+    throw new ApiError(400, "Message is already pinned");
+  }
+
   const updatedChat = await Chat.findByIdAndUpdate(
     chatId,
     {
       $addToSet: {
-        pinnedMessages: new Types.ObjectId(messageId),
+        "metadata.pinnedMessage": new Types.ObjectId(messageId),
       },
     },
     { new: true },
@@ -92,11 +104,9 @@ export const unpinMessage = async (
     throw new ApiError(400, "You are not a participant of this chat");
   }
 
-  if (
-    !chat.pinnedMessages?.some(
-      (id: Types.ObjectId) => id.toString() === messageId,
-    )
-  ) {
+  // Check if message is pinned
+  if (!chat.metadata?.pinnedMessage || 
+      !chat.metadata.pinnedMessage.some((pin: Types.ObjectId) => pin.toString() === messageId)) {
     throw new ApiError(400, "Message is not pinned");
   }
 
@@ -104,7 +114,7 @@ export const unpinMessage = async (
     chatId,
     {
       $pull: {
-        pinnedMessages: new Types.ObjectId(messageId),
+        "metadata.pinnedMessage": new Types.ObjectId(messageId),
       },
     },
     { new: true },

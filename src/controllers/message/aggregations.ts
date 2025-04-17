@@ -1,6 +1,4 @@
-import { PipelineStage } from "mongoose";
-
-export const chatMessageCommonAggregation = (): PipelineStage[] => {
+export const chatMessageCommonAggregation = () => {
   return [
     {
       $project: {

@@ -28,7 +28,7 @@ A robust real-time chat application backend built with Node.js, Express, TypeScr
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v18.x or higher)
 - MongoDB (local or Atlas)
 - npm or yarn package manager
 
@@ -64,6 +64,7 @@ A robust real-time chat application backend built with Node.js, Express, TypeScr
 
    CLIENT_URL=http://localhost:3000
    INTERNAL_API_KEY=your_internal_api_key
+   VALIDATION_URL=http://localhost:3000
    ```
 
 4. **Start development server**:
@@ -150,6 +151,8 @@ The application uses Socket.IO for real-time communication:
 - `chatDeleted`: Chat deleted
 - `leaveChat`: User leaves a group chat
 - `updateGroupName`: Group chat name updated
+- `newParticipantAdded`: New participant added to group
+- `participantLeft`: Participant removed from group
 
 ### Typing Indicators
 - `typing`: User starts typing
@@ -196,7 +199,33 @@ chat-backend/
 ├── Dockerfile           # Docker configuration
 ├── package.json         # Dependencies and scripts
 ├── tsconfig.json        # TypeScript configuration
+├── API_DOC.md           # Detailed API documentation
 └── README.md            # Project documentation
+```
+
+## Response Types
+
+The API uses standardized response types:
+
+### Success Response
+```json
+{
+  "statusCode": 200,
+  "data": { /* Response data */ },
+  "message": "Success message",
+  "success": true
+}
+```
+
+### Error Response
+```json
+{
+  "statusCode": 404,
+  "data": null,
+  "message": "Resource not found",
+  "success": false,
+  "errors": []
+}
 ```
 
 ## Recent Enhancements
@@ -210,40 +239,6 @@ chat-backend/
 - **Optimistic UI Updates**: Frontend implementation now uses optimistic updates to improve UX
 - **Race Condition Prevention**: Fixed potential race conditions in read receipt handling
 
-## Error Handling
-
-The API uses consistent error responses:
-
-- **400 Bad Request**: Invalid input
-- **401 Unauthorized**: Authentication failure
-- **403 Forbidden**: Permission denied
-- **404 Not Found**: Resource not found
-- **500 Internal Server Error**: Server-side error
-
-All error responses follow a standardized format:
-```json
-{
-  "statusCode": 404,
-  "data": null,
-  "message": "Resource not found",
-  "success": false,
-  "errors": []
-}
-```
-
-## Connection Management
-
-The application includes built-in connection status monitoring:
-
-- Real-time tracking of connection state
-- Automatic detection of network issues
-- Graceful handling of reconnection scenarios
-- Client-side connection health API
-
-## License
-
-This project is licensed under the [ISC License](LICENSE).
-
 ## Contributing
 
 1. Fork the repository
@@ -251,3 +246,13 @@ This project is licensed under the [ISC License](LICENSE).
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+## Contact
+
+For any questions or suggestions, please open an issue on GitHub.

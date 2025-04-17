@@ -123,7 +123,7 @@ export const updateGroupChat = async (
   res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
-  const { name } = req.body;
+  const { name, avatarUrl } = req.body;
   const currentUser = (req as AuthenticatedRequest).user;
 
   if (!name?.trim()) {
@@ -143,9 +143,14 @@ export const updateGroupChat = async (
     throw new ApiError(403, "Only admin can update group details");
   }
 
+  const updateData: { name: string; avatarUrl: string } = {
+    name,
+    avatarUrl,
+  };
+
   const updatedChat = await Chat.findByIdAndUpdate(
     chatId,
-    { $set: { name } },
+    { $set: updateData },
     { new: true },
   );
 

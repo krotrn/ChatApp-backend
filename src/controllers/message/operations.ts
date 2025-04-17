@@ -33,6 +33,14 @@ export const getAllMessages = async (
   res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
+  const { page = "1", limit = "50", before, after } = req.query;
+
+  const pageNumber = parseInt(page as string, 10);
+  const limitNumber = parseInt(limit as string, 10);
+
+  if (isNaN(pageNumber) || isNaN(limitNumber) || pageNumber < 1 || limitNumber < 1) {
+    throw new ApiError(400, "Invalid pagination parameters");
+  }
 
   const selectedChat = await Chat.findById(chatId);
   if (!selectedChat) {
@@ -48,23 +56,47 @@ export const getAllMessages = async (
     throw new ApiError(400, "User is not part of chat.");
   }
 
+  // Build filter for pagination
+  const filter: { chatId: Types.ObjectId; createdAt?: { $lt?: Date; $gt?: Date } } = { chatId: new Types.ObjectId(chatId) };
+  
+  // Add time-based filtering if provided
+  if (before) {
+    filter.createdAt = { $lt: new Date(before as string) };
+  } else if (after) {
+    filter.createdAt = { $gt: new Date(after as string) };
+  }
+
+  // Skip calculation for pagination
+  const skip = (pageNumber - 1) * limitNumber;
+
   const messages: MessageResponseType[] = await ChatMessage.aggregate([
-    {
-      $match: {
-        chatId: new Types.ObjectId(chatId),
-      },
-    },
+    { $match: filter },
     ...chatMessageCommonAggregation(),
-    {
-      $sort: {
-        createdAt: -1,
-      },
-    },
+    { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limitNumber },
   ]);
+
+  // Get total count for pagination metadata
+  const total = await ChatMessage.countDocuments(filter);
 
   res
     .status(200)
-    .json(new ApiResponse(200, messages, "Messages fetched successfully"));
+    .json(
+      new ApiResponse(
+        200, 
+        {
+          messages,
+          pagination: {
+            total,
+            page: pageNumber,
+            limit: limitNumber,
+            hasMore: total > skip + limitNumber
+          }
+        }, 
+        "Messages fetched successfully"
+      )
+    );
 };
 
 // Send message
@@ -77,7 +109,7 @@ export const sendMessage = async (
 
   try {
     const { chatId } = req.params;
-    const { content }: { content: string } = req.body;
+    const { content, replyToId }: { content: string; replyToId?: string } = req.body;
 
     let attachments: Express.Multer.File[] = [];
     if (!Array.isArray(req.files) && req.files?.attachments) {
@@ -127,19 +159,25 @@ export const sendMessage = async (
       avatarUrl: (req as AuthenticatedRequest).user.avatarUrl,
     };
 
-    const message = await ChatMessage.create(
-      [
-        {
-          sender,
-          receivers,
-          chatId: new Types.ObjectId(chatId),
-          content: content || "",
-          attachments: messageFiles,
-          status: StatusEnum.sent,
-        },
-      ],
-      { session },
-    );
+    const messageData: Partial<MessageType> = {
+      sender,
+      receivers,
+      chatId: new Types.ObjectId(chatId),
+      content: content || "",
+      attachments: messageFiles,
+      status: StatusEnum.sent,
+    };
+
+    // Add replyToId if provided
+    if (replyToId) {
+      const originalMessage = await ChatMessage.findById(replyToId);
+      if (!originalMessage) {
+        throw new ApiError(404, "Referenced message does not exist");
+      }
+      messageData.replyToId = new Types.ObjectId(replyToId);
+    }
+
+    const message = await ChatMessage.create([messageData], { session });
 
     const updateChat = await Chat.findByIdAndUpdate(
       chatId,
@@ -331,6 +369,13 @@ export const replyMessage = async (
   const { content } = req.body;
   const currentUser = (req as AuthenticatedRequest).user;
 
+  let attachments: Express.Multer.File[] = [];
+  if (!Array.isArray(req.files) && req.files?.attachments) {
+    attachments = req.files.attachments;
+  } else if (Array.isArray(req.files)) {
+    attachments = req.files;
+  }
+
   const chat = await Chat.findById(chatId);
   if (!chat) {
     throw new ApiError(404, "Chat does not exist");
@@ -357,12 +402,21 @@ export const replyMessage = async (
     avatarUrl: currentUser.avatarUrl,
   };
 
+  const messageFiles: AttachmentType[] = attachments.map((attachment) => ({
+    name: attachment.filename,
+    url: getStaticFilePath(req, attachment.filename),
+    localPath: getLocalPath(attachment.filename),
+    type: attachment.mimetype || "application/octet-stream",
+    status: StatusEnum.sent,
+  }));
+
   const replyMessage = await ChatMessage.create({
     sender,
     receivers,
     chatId,
     content,
     replyToId: messageId,
+    attachments: messageFiles,
   });
 
   await Chat.findByIdAndUpdate(chatId, {

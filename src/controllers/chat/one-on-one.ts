@@ -21,8 +21,6 @@ const deleteCascadeChatMessages = async (
   chatId: string,
   session: ClientSession,
 ): Promise<void> => {
-  session.startTransaction();
-
   try {
     const messages = await ChatMessage.find({ chatId });
 
@@ -42,12 +40,8 @@ const deleteCascadeChatMessages = async (
     }
 
     await ChatMessage.deleteMany({ chatId }, { session });
-    await session.commitTransaction();
   } catch (error) {
-    await session.abortTransaction();
     throw error;
-  } finally {
-    session.endSession();
   }
 };
 
