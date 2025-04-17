@@ -33,8 +33,11 @@ export const authenticate = (
     if (!token) {
       throw new ApiError(401, "Authentication required token is missing.");
     }
+    if (!process.env.JWT_SECRET) {
+      throw new ApiError(500, "JWT_SECRET is not defined.");
+    }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
 
     const now = Math.floor(Date.now() / 1000);
     if (decoded.exp < now) {

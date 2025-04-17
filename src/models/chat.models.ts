@@ -45,18 +45,26 @@ const chatSchema = new Schema(
       default: [],
     },
     metadata: {
-      pinnedMessage: [
-        {
-          type: Schema.Types.ObjectId,
-          ref: "ChatMessage",
+      type: {
+        pinnedMessage: {
+          type: [
+            {
+              type: Schema.Types.ObjectId,
+              ref: "ChatMessage",
+            },
+          ],
+          default: [],
         },
-      ],
-      customePermissions: Schema.Types.Mixed,
+        customePermissions: {
+          type: Schema.Types.Mixed,
+          default: {},
+        },
+      },
     },
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 chatSchema.index({ participants: 1, updatedAt: -1 });

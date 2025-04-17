@@ -12,7 +12,6 @@ import {
   editMessage,
   getAllMessages,
   markMessagesAsRead,
-  replyMessage,
   sendMessage,
   updateReaction,
 } from "../controllers/message/operations";
@@ -45,17 +44,6 @@ router
 router
   .route("/:chatId/read")
   .post(messageRateLimiter, authenticate, markMessagesAsRead);
-
-router
-  .route("/:chatId/:messageId/reply")
-  .post(
-    messageRateLimiter,
-    fileUploadRateLimiter,
-    upload.array("attachments", 5),
-    authenticate,
-    handleUploadErrors,
-    replyMessage
-  );
 
 router
   .route("/:chatId/:messageId/reaction")

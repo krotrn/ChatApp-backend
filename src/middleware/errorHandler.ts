@@ -6,7 +6,7 @@ import { MulterError } from "multer";
 import ApiError from "../utils/ApiError";
 
 export const errorHandler: ErrorRequestHandler = (
-  err: Error,
+  err,
   req,
   res,
   next,

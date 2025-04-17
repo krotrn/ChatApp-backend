@@ -5,8 +5,10 @@ import type { CustomSocket } from "../types/Socket";
 import { ChatEventEnum } from "../utils/constants";
 
 const initializeSocketIO = (io: Server): void => {
+  // authentication middleware
   io.use(authenticateSocket);
 
+  // Socket.io connection event
   io.on("connection", async (socket: CustomSocket) => {
     try {
       if (!socket.user) {
@@ -14,13 +16,14 @@ const initializeSocketIO = (io: Server): void => {
         return socket.disconnect(true);
       }
 
+      // Socket connection established
       socket.join(socket.user.id);
       socket.emit(ChatEventEnum.CONNECTED_EVENT);
-      console.error("User connected. userId:", socket.user.id);
+      console.log("User connected. userId:", socket.user.id);
 
       // Joining a chat room
       socket.on(ChatEventEnum.ONLINE_EVENT, (chatId: string) => {
-        console.error(`User joined the chat. chatId:`, chatId);
+        console.log(`User joined the chat. chatId:`, chatId);
         socket.join(chatId);
       });
 
@@ -29,13 +32,15 @@ const initializeSocketIO = (io: Server): void => {
         socket.to(chatId).emit(ChatEventEnum.TYPING_EVENT, chatId);
       });
 
+      // Stop typing event
       socket.on(ChatEventEnum.STOP_TYPING_EVENT, (chatId: string) => {
         socket.to(chatId).emit(ChatEventEnum.STOP_TYPING_EVENT, chatId);
       });
 
+      // Disconnect event
       socket.on(ChatEventEnum.DISCONNECT_EVENT, async () => {
         if (socket.user) {
-          console.error("User disconnected. userId:", socket.user.id);
+          console.log("User disconnected. userId:", socket.user.id);
           socket.leave(socket.user.id);
         }
       });

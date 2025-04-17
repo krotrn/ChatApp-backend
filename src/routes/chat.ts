@@ -25,7 +25,13 @@ router
   .route("/")
   .get(authenticate, getAllChats)
   .post(chatCreationRateLimiter, authenticate, createOrGetAOneOnOneChat);
+router
+  .route("/chat/:chatId")
+  .get(authenticate, getChatById)
+  .delete(authenticate, deleteOneOnOneChat);
 
+
+router.route("/:chatId/me").delete(authenticate, deleteChatForMe);
 router
   .route("/group")
   .post(chatCreationRateLimiter, authenticate, createAGroupChat);
@@ -45,12 +51,6 @@ router
 
 router.route("/group/:chatId/leave").delete(authenticate, leaveGroupChat);
 
-router
-  .route("/chat/:chatId")
-  .get(authenticate, getChatById)
-  .delete(authenticate, deleteOneOnOneChat);
-
-router.route("/:chatId/me").delete(authenticate, deleteChatForMe);
 
 router
   .route("/:chatId/pin/:messageId")

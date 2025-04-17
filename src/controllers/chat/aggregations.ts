@@ -28,9 +28,6 @@ export const chatCommonAggregation = () => {
             },
           },
           ...chatMessageCommonAggregation(),
-          {
-            $sort: { createdAt: -1 },
-          },
         ],
         as: "messages",
       },

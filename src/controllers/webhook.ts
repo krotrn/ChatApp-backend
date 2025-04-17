@@ -3,6 +3,7 @@ import { Router } from "express";
 
 import { Chat } from "../models/chat.models";
 import ApiError from "../utils/ApiError";
+import { ApiResponse } from "src/utils/ApiResponse";
 
 const router = Router();
 
@@ -33,7 +34,7 @@ router.post("/", async (req: Request, res: Response) => {
         },
       );
     }
-    res.status(200).json({ message: "User update processed" });
+    res.status(200).json(new ApiResponse(200, {}, "User data updated successfully!"));
   } catch (error) {
     const apiError = new ApiError(500, "Internal server error");
     apiError.stack = error instanceof Error ? error.stack : undefined;

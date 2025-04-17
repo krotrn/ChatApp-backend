@@ -52,7 +52,7 @@ export interface MessageType extends Document {
   readBy: ReadByType[];
   deletedFor: DeletedForEntry[];
   replyToId?: Types.ObjectId;
-  formatting: Map<string, string>;
+  formatting: Record<string, string>;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -8,12 +8,17 @@ import { ChatEventEnum } from "../../utils/constants";
 import { validateUser } from "../../utils/userHelper";
 import { chatCommonAggregation } from "./aggregations";
 import type { AuthenticatedRequest } from "../../types/request";
-import type { ChatParticipant, ChatResponseType } from "../../types/chat";
+import type {
+  ChatParticipant,
+  ChatResponseType,
+  ChatType,
+} from "../../types/chat";
+import { deleteCascadeChatMessages } from "./one-on-one";
 
 // Create A Group Chat
 export const createAGroupChat = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> => {
   const session = await startSession();
   session.startTransaction();
@@ -61,7 +66,7 @@ export const createAGroupChat = async (
           createdBy: currentUser.id,
         },
       ],
-      { session },
+      { session }
     );
 
     const groupChat: ChatResponseType[] = await Chat.aggregate([
@@ -83,7 +88,7 @@ export const createAGroupChat = async (
         req,
         participant.userId,
         ChatEventEnum.NEW_CHAT_EVENT,
-        payload,
+        payload
       );
     });
 
@@ -101,7 +106,7 @@ export const createAGroupChat = async (
 // Get Group Chat Details
 export const getGroupChatDetails = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> => {
   const chat: ChatResponseType[] = await Chat.aggregate([
     { $match: { _id: new Types.ObjectId(req.params.chatId) } },
@@ -120,7 +125,7 @@ export const getGroupChatDetails = async (
 // Update Group Chat
 export const updateGroupChat = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> => {
   const { chatId } = req.params;
   const { name, avatarUrl } = req.body;
@@ -148,10 +153,10 @@ export const updateGroupChat = async (
     avatarUrl,
   };
 
-  const updatedChat = await Chat.findByIdAndUpdate(
+  const updatedChat: ChatResponseType | null = await Chat.findByIdAndUpdate(
     chatId,
     { $set: updateData },
-    { new: true },
+    { new: true }
   );
 
   if (!updatedChat) {
@@ -164,7 +169,7 @@ export const updateGroupChat = async (
       req,
       participant.userId,
       ChatEventEnum.CHAT_UPDATED_EVENT,
-      updatedChat,
+      updatedChat
     );
   });
 
@@ -176,7 +181,7 @@ export const updateGroupChat = async (
 // Delete Group Chat
 export const deleteGroupChat = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> => {
   const { chatId } = req.params;
   const currentUser = (req as AuthenticatedRequest).user;
@@ -206,7 +211,7 @@ export const deleteGroupChat = async (
       req,
       participant.userId,
       ChatEventEnum.CHAT_DELETED_EVENT,
-      chat,
+      chat
     );
   });
 
@@ -218,7 +223,7 @@ export const deleteGroupChat = async (
 // Add New Participant In Group Chat
 export const addNewParticipantInGroupChat = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> => {
   const { chatId } = req.params;
   const { participants } = req.body;
@@ -228,7 +233,7 @@ export const addNewParticipantInGroupChat = async (
     throw new ApiError(400, "Participants are required");
   }
 
-  const chat = await Chat.findById(chatId);
+  const chat: ChatType | null = await Chat.findById(chatId);
   if (!chat) {
     throw new ApiError(404, "Chat not found");
   }
@@ -245,10 +250,10 @@ export const addNewParticipantInGroupChat = async (
 
   // Filter existing participants
   const existingParticipantIds = chat.participants.map(
-    (p: ChatParticipant) => p.userId,
+    (p: ChatParticipant) => p.userId
   );
   const newUserIds = userIds.filter(
-    (id: string) => !existingParticipantIds.includes(id),
+    (id: string) => !existingParticipantIds.includes(id)
   );
 
   if (!newUserIds.length) {
@@ -261,13 +266,13 @@ export const addNewParticipantInGroupChat = async (
   }
 
   const newUserParticipants = participants.filter((p: ChatParticipant) =>
-    newUserIds.includes(p.userId),
+    newUserIds.includes(p.userId)
   );
 
-  const updatedChat = await Chat.findByIdAndUpdate(
+  const updatedChat: ChatType | null = await Chat.findByIdAndUpdate(
     chatId,
     { $push: { participants: { $each: newUserParticipants } } },
-    { new: true },
+    { new: true }
   );
 
   if (!updatedChat) {
@@ -279,7 +284,7 @@ export const addNewParticipantInGroupChat = async (
     ...chatCommonAggregation(),
   ]);
 
-  const chatPayload = chatResponse[0];
+  const payload = chatResponse[0];
 
   // Notify existing members
   chat.participants.forEach((participant: ChatParticipant) => {
@@ -287,29 +292,29 @@ export const addNewParticipantInGroupChat = async (
       req,
       participant.userId,
       ChatEventEnum.CHAT_UPDATED_EVENT,
-      chatPayload,
+      payload
     );
   });
 
   // Notify new members
   newUserIds.forEach((userId: string) => {
-    emitSocketEvent(req, userId, ChatEventEnum.NEW_CHAT_EVENT, chatPayload);
+    emitSocketEvent(req, userId, ChatEventEnum.NEW_CHAT_EVENT, payload);
   });
 
   res
     .status(200)
-    .json(new ApiResponse(200, chatPayload, "Participants added successfully"));
+    .json(new ApiResponse(200, payload, "Participants added successfully"));
 };
 
 // Remove Participant From Group Chat
 export const removeParticipantFromGroupChat = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> => {
-  const { chatId, participantId } = req.params;
+  const { chatId, userId } = req.params;
   const currentUser = (req as AuthenticatedRequest).user;
 
-  if (participantId === currentUser.id) {
+  if (userId === currentUser.id) {
     throw new ApiError(400, "You cannot remove yourself from the group");
   }
 
@@ -326,16 +331,14 @@ export const removeParticipantFromGroupChat = async (
     throw new ApiError(403, "Only admin can remove participants");
   }
 
-  if (
-    !chat.participants.some((p: ChatParticipant) => p.userId === participantId)
-  ) {
+  if (!chat.participants.some((p: ChatParticipant) => p.userId === userId)) {
     throw new ApiError(400, "User is not a participant of the chat");
   }
 
-  const updatedChat = await Chat.findByIdAndUpdate(
+  const updatedChat: ChatType | null = await Chat.findByIdAndUpdate(
     chatId,
-    { $pull: { participants: { userId: participantId } } },
-    { new: true },
+    { $pull: { participants: { userId } } },
+    { new: true }
   );
 
   if (!updatedChat) {
@@ -347,7 +350,7 @@ export const removeParticipantFromGroupChat = async (
     ...chatCommonAggregation(),
   ]);
 
-  const chatPayload = chatResponse[0];
+  const payload = chatResponse[0];
 
   // Notify existing members
   updatedChat.participants.forEach((participant: ChatParticipant) => {
@@ -355,29 +358,22 @@ export const removeParticipantFromGroupChat = async (
       req,
       participant.userId,
       ChatEventEnum.CHAT_UPDATED_EVENT,
-      chatPayload,
+      payload
     );
   });
 
   // Notify removed member
-  emitSocketEvent(
-    req,
-    participantId,
-    ChatEventEnum.REMOVED_FROM_CHAT,
-    chatPayload,
-  );
+  emitSocketEvent(req, userId, ChatEventEnum.REMOVED_FROM_CHAT, payload);
 
   res
     .status(200)
-    .json(
-      new ApiResponse(200, chatPayload, "Participant removed successfully"),
-    );
+    .json(new ApiResponse(200, payload, "Participant removed successfully"));
 };
 
 // Leave Group Chat
 export const leaveGroupChat = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> => {
   const { chatId } = req.params;
   const currentUser = (req as AuthenticatedRequest).user;
@@ -402,22 +398,39 @@ export const leaveGroupChat = async (
   if (chat.admin === currentUser.id) {
     // If admin is leaving, assign new admin
     const nonAdminParticipants = chat.participants.filter(
-      (p: ChatParticipant) => p.userId !== currentUser.id,
+      (p: ChatParticipant) => p.userId !== currentUser.id
     );
 
     if (nonAdminParticipants.length === 0) {
-      // If no other participants, delete the chat
-      await Chat.findByIdAndDelete(chatId);
-      res
-        .status(200)
-        .json(
-          new ApiResponse(
-            200,
-            null,
-            "You left the group and the group was deleted as you were the only participant",
-          ),
+      console.log("Deleting chat as all participants have left");
+      // Deleting chat as all participants have left
+      try {
+        const session = await startSession();
+        session.startTransaction();
+        await deleteCascadeChatMessages(chatId, session);
+        await Chat.findByIdAndDelete(chatId).session(session);
+
+        await session.commitTransaction();
+        session.endSession();
+
+        // Notify all participants
+        chat.participants.forEach((participant: ChatParticipant) => {
+          emitSocketEvent(
+            req,
+            participant.userId,
+            ChatEventEnum.CHAT_DELETED_EVENT,
+            { _id: chatId }
+          );
+        });
+
+        console.log(
+          "Chat deleted successfully after all participants have left"
         );
-      return;
+      } catch (error) {
+        console.log(error);
+        res.status(500).json(new ApiResponse(500, null, "Error deleting chat"));
+        return;
+      }
     }
 
     // Assign the first non-admin participant as the new admin
@@ -429,14 +442,14 @@ export const leaveGroupChat = async (
         $pull: { participants: { userId: currentUser.id } },
         $set: { admin: newAdmin.userId },
       },
-      { new: true },
+      { new: true }
     );
   } else {
     // Non-admin leaving
     updatedChat = await Chat.findByIdAndUpdate(
       chatId,
       { $pull: { participants: { userId: currentUser.id } } },
-      { new: true },
+      { new: true }
     );
   }
 
@@ -457,7 +470,7 @@ export const leaveGroupChat = async (
       req,
       participant.userId,
       ChatEventEnum.CHAT_UPDATED_EVENT,
-      chatPayload,
+      chatPayload
     );
   });
 

@@ -1,6 +1,7 @@
 # Chat Service API Documentation
 
 ## Table of Contents
+
 - [Base URL](#base-url)
 - [Authentication](#authentication)
 - [WebSocket Events](#websocket-events)
@@ -56,8 +57,9 @@
   - [500 Internal Server Error](#500-internal-server-error)
 
 ## Base URL
+
 ```
-http://localhost:3000/api/v1
+http://localhost:3000
 ```
 
 ## Authentication
@@ -65,12 +67,15 @@ http://localhost:3000/api/v1
 All API requests must include a valid JWT token in the Authorization header. The token is obtained during the login process and must be included in all subsequent requests.
 
 ### Token Format
+
 ```
 Authorization: Bearer <token>
 ```
 
 ### Token Structure
+
 The JWT token contains the following claims:
+
 ```json
 {
   "id": "user_id",
@@ -79,12 +84,13 @@ The JWT token contains the following claims:
   "email": "user_email",
   "username": "username",
   "role": "user_role",
-  "exp": 1234567890,  // Expiration time in seconds since epoch
-  "iat": 1234567890   // Issued at time in seconds since epoch
+  "exp": 1234567890, // Expiration time in seconds since epoch
+  "iat": 1234567890 // Issued at time in seconds since epoch
 }
 ```
 
 ### Token Expiration
+
 - Tokens are valid for 1 hour from the time of issuance
 - Expired tokens will result in a 401 Unauthorized response
 - The client should handle token expiration by redirecting to the login page
@@ -92,6 +98,7 @@ The JWT token contains the following claims:
 ### Error Responses
 
 #### 401 Unauthorized
+
 ```json
 {
   "statusCode": 401,
@@ -102,29 +109,34 @@ The JWT token contains the following claims:
 ```
 
 ### Example Request
+
 ```http
 GET /api/v1/chats
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 ### WebSocket Authentication
+
 WebSocket connections must also include the JWT token in the connection query parameters:
+
 ```javascript
-const socket = io('http://localhost:3000', {
+const socket = io("http://localhost:3000", {
   query: {
-    token: 'your_jwt_token'
-  }
+    token: "your_jwt_token",
+  },
 });
 ```
 
 ## WebSocket Events
 
 ### Connection Events
+
 - `connected`: Emitted when a user connects to the socket
 - `disconnect`: Emitted when a user disconnects
 - `online`: Emitted when a user comes online
 
 ### Message Events
+
 - `messageReceived`: Emitted when a new message is received. Emits a `MessageResponseType` object.
 - `messageDeleted`: Emitted when a message is deleted. Emits a `MessageResponseType` object.
 - `messageReaction`: Emitted when a message reaction is updated. Emits a `MessageResponseType` object.
@@ -151,6 +163,7 @@ const socket = io('http://localhost:3000', {
   ```
 
 ### Chat Events
+
 - `newChat`: Emitted when a new chat is created. Emits a `ChatResponseType` object.
 - `chatDeleted`: Emitted when a chat is deleted. Emits a `ChatResponseType` object.
 - `leaveChat`: Emitted when a user leaves a group chat. Emits a `ChatResponseType` object.
@@ -159,10 +172,12 @@ const socket = io('http://localhost:3000', {
 - `participantLeft`: Emitted when a participant leaves a group. Emits a `ChatResponseType` object.
 
 ### Typing Indicators
+
 - `typing`: Emitted when a user starts typing
 - `stopTyping`: Emitted when a user stops typing
 
 ### Error Handling
+
 - `socketError`: Emitted when a socket error occurs
 
 ## Response Types
@@ -175,22 +190,22 @@ The `MessageResponseType` represents the structure of a message after it has bee
 
 ```typescript
 export interface MessageResponseType {
-  _id: string;                                   // String representation of MongoDB ObjectId
-  sender: User;                                  // User who sent the message
-  receivers: User[];                             // Array of users who received the message
-  chatId: string;                                // String representation of chat ObjectId
-  content: string;                               // Message content
-  attachments: AttachmentType[];                 // File attachments
-  status: StatusEnum;                            // Message status (sent, delivered, read)
-  reactions: ReactionType[];                     // User reactions to the message
+  _id: string; // String representation of MongoDB ObjectId
+  sender: User; // User who sent the message
+  receivers: User[]; // Array of users who received the message
+  chatId: string; // String representation of chat ObjectId
+  content: string; // Message content
+  attachments: AttachmentType[]; // File attachments
+  status: StatusEnum; // Message status (sent, delivered, read)
+  reactions: ReactionType[]; // User reactions to the message
   edited: { isEdited: boolean; editedAt: Date }; // Edit status
-  edits: EditType[];                             // History of edits
-  readBy: ReadByType[];                          // Users who have read the message
-  deletedFor: DeletedForEntry[];                 // Users who have deleted the message
-  replyToId: string | null;                      // Reference to parent message if it's a reply
-  formatting: Record<string, string>;            // Message formatting options
-  createdAt: Date;                               // Creation timestamp
-  updatedAt: Date;                               // Last update timestamp
+  edits: EditType[]; // History of edits
+  readBy: ReadByType[]; // Users who have read the message
+  deletedFor: DeletedForEntry[]; // Users who have deleted the message
+  replyToId: string | null; // Reference to parent message if it's a reply
+  formatting: Record<string, string>; // Message formatting options
+  createdAt: Date; // Creation timestamp
+  updatedAt: Date; // Last update timestamp
 }
 ```
 
@@ -200,22 +215,23 @@ The `ChatResponseType` represents the structure of a chat after it has been proc
 
 ```typescript
 export interface ChatResponseType {
-  _id: string;                                   // String representation of MongoDB ObjectId
-  name: string;                                  // Chat name
-  lastMessage: MessageResponseType | null;       // Last message in the chat
-  avatarUrl: string;                             // Chat avatar URL
-  participants: ChatParticipant[];               // Chat participants
-  admin: string;                                 // Chat admin user ID
-  type: "direct" | "group" | "channel";          // Chat type
-  createdBy: string;                             // Creator user ID
-  deletedFor: DeletedForEntry[];                 // Users who have deleted the chat
-  metadata?: {                                   // Additional metadata
-    pinnedMessages: string[];                    // Pinned message IDs
-    customPermissions?: any;                     // Custom permissions
+  _id: string; // String representation of MongoDB ObjectId
+  name: string; // Chat name
+  lastMessage: MessageResponseType | null; // Last message in the chat
+  avatarUrl: string; // Chat avatar URL
+  participants: ChatParticipant[]; // Chat participants
+  admin: string; // Chat admin user ID
+  type: "direct" | "group" | "channel"; // Chat type
+  createdBy: string; // Creator user ID
+  deletedFor: DeletedForEntry[]; // Users who have deleted the chat
+  metadata?: {
+    // Additional metadata
+    pinnedMessages: string[]; // Pinned message IDs
+    customPermissions?: any; // Custom permissions
   };
-  messages: MessageResponseType[];               // Chat messages
-  createdAt: Date;                               // Creation timestamp
-  updatedAt: Date;                               // Last update timestamp
+  messages: MessageResponseType[]; // Chat messages
+  createdAt: Date; // Creation timestamp
+  updatedAt: Date; // Last update timestamp
 }
 ```
 
@@ -357,6 +373,7 @@ Messages in the system follow a defined status flow:
 3. **Read**: Updated when a recipient marks the message as read
 
 Tracking logic:
+
 - Status transitions are one-way (sent → delivered → read)
 - Each status change generates a socket event
 - Read receipts are stored per-user with timestamps
@@ -420,7 +437,7 @@ const markMessagesAsRead = async (req, res) => {
 The system enforces rules for chat participant management:
 
 1. **Direct Chats**: Limited to exactly 2 participants
-2. **Group Chats**: 
+2. **Group Chats**:
    - Require at least 2 participants
    - Have an admin who has special privileges
    - Support adding/removing participants
@@ -448,7 +465,7 @@ const createGroupChat = async (req, res) => {
     type: "group",
     participants: [
       { userId, role: "admin" },
-      ...participants.map(id => ({ userId: id, role: "member" })),
+      ...participants.map((id) => ({ userId: id, role: "member" })),
     ],
     admin: userId,
     createdBy: userId,
@@ -500,10 +517,12 @@ Retrieves all chats for the authenticated user.
 **Auth Required**: Yes
 
 **Query Parameters**:
+
 - `limit` (optional): Number of chats to retrieve (default: 10)
 - `page` (optional): Page number for pagination (default: 1)
 
 **Success Response**:
+
 ```json
 {
   "statusCode": 200,
@@ -511,20 +530,22 @@ Retrieves all chats for the authenticated user.
   "message": "Chats retrieved successfully",
   "data": {
     "chats": [ChatResponseType],
-    "totalChats": 25,
-    "totalPages": 3,
-    "currentPage": 1,
-    "hasNextPage": true
+    "total": 25,
+    "page": 3,
+    "limit": 1,
+    "hasMore": true
   }
 }
 ```
 
 #### Create or Get One-on-One Chat
+
 ```http
 POST /api/v1/chats/chat
 ```
 
 Request:
+
 ```json
 {
   "participants": [
@@ -539,52 +560,41 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 201,
-  "data": {
-    "_id": "chat_id",
-    "name": "Chat Name",
-    "type": "direct",
-    "participants": [...],
-    "admin": "admin_user_id",
-    "createdBy": "creator_user_id",
-    "lastMessage": null
-  },
+  "data": ChatResponseType,
   "message": "Chat retrieved successfully",
   "success": true
 }
 ```
 
 #### Get Chat by ID
+
 ```http
 GET /api/v1/chats/chat/:chatId
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": {
-    "_id": "chat_id",
-    "name": "Chat Name",
-    "type": "direct|group",
-    "participants": [...],
-    "admin": "admin_user_id",
-    "createdBy": "creator_user_id",
-    "lastMessage": {...}
-  },
+  "data": ChatResponseType,
   "message": "Chat retrieved successfully",
   "success": true
 }
 ```
 
 #### Delete One-on-One Chat
+
 ```http
 DELETE /api/v1/chats/chat/:chatId
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
@@ -595,11 +605,13 @@ Response:
 ```
 
 #### Delete Chat For Me
+
 ```http
 DELETE /api/v1/chats/chat/:chatId/me
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
@@ -612,11 +624,13 @@ Response:
 ### Group Chat Management
 
 #### Create Group Chat
+
 ```http
 POST /api/v1/chats/group
 ```
 
 Request:
+
 ```json
 {
   "name": "Group Name",
@@ -631,82 +645,67 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 201,
-  "data": {
-    "_id": "chat_id",
-    "name": "Group Name",
-    "type": "group",
-    "participants": [...],
-    "admin": "admin_user_id",
-    "createdBy": "creator_user_id",
-    "lastMessage": null
-  },
+  "data": ChatResponseType,
   "message": "Group chat created successfully",
   "success": true
 }
 ```
 
 #### Get Group Chat Details
+
 ```http
 GET /api/v1/chats/group/:chatId
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": {
-    "_id": "chat_id",
-    "name": "Group Name",
-    "type": "group",
-    "participants": [...],
-    "admin": "admin_user_id",
-    "createdBy": "creator_user_id",
-    "lastMessage": {...}
-  },
+  "data": ChatResponseType,
   "message": "Group chat details retrieved successfully",
   "success": true
 }
 ```
 
-#### Rename Group Chat
+#### Update Group Chat
+
 ```http
 PATCH /api/v1/chats/group/:chatId
 ```
 
 Request:
+
 ```json
 {
-  "name": "New Group Name"
+  "name": "New Group Name",
+  "avatarUrl": "avatar_url"
 }
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": {
-    "_id": "chat_id",
-    "name": "New Group Name",
-    "type": "group",
-    "participants": [...],
-    "admin": "admin_user_id",
-    "createdBy": "creator_user_id",
-    "lastMessage": {...}
-  },
+  "data": ChatResponseType,
   "message": "Group chat renamed successfully",
   "success": true
 }
 ```
 
 #### Delete Group Chat
+
 ```http
 DELETE /api/v1/chats/group/:chatId
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
@@ -717,11 +716,13 @@ Response:
 ```
 
 #### Add Participant to Group
+
 ```http
 POST /api/v1/chats/group/:chatId/participants
 ```
 
 Request:
+
 ```json
 {
   "participants": [
@@ -735,64 +736,45 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": {
-    "_id": "chat_id",
-    "name": "Group Name",
-    "type": "group",
-    "participants": [...],
-    "admin": "admin_user_id",
-    "createdBy": "creator_user_id",
-    "lastMessage": {...}
-  },
+  "data": ChatResponseType,
   "message": "Participant added successfully",
   "success": true
 }
 ```
 
 #### Remove Participant from Group
+
 ```http
 DELETE /api/v1/chats/group/:chatId/participants/:userId
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": {
-    "_id": "chat_id",
-    "name": "Group Name",
-    "type": "group",
-    "participants": [...],
-    "admin": "admin_user_id",
-    "createdBy": "creator_user_id",
-    "lastMessage": {...}
-  },
+  "data": ChatResponseType,
   "message": "Participant removed successfully",
   "success": true
 }
 ```
 
 #### Leave Group Chat
+
 ```http
 DELETE /api/v1/chats/group/:chatId/leave
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": {
-    "_id": "chat_id",
-    "name": "Group Name",
-    "type": "group",
-    "participants": [...],
-    "admin": "admin_user_id",
-    "createdBy": "creator_user_id",
-    "lastMessage": {...}
-  },
+  "data": ChatResponseType,
   "message": "Left group successfully",
   "success": true
 }
@@ -801,144 +783,94 @@ Response:
 ### Message Management
 
 #### Get All Messages
+
 ```http
 GET /api/v1/messages/:chatId
 ```
 
+**Query Parameters**:
+
+- `limit` (optional): Number of chats to retrieve (default: 10)
+- `page` (optional): Page number for pagination (default: 1)
+- `before` (optional): Date before message is required
+- `after` (optional): Date after message is required
+
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": [
-    {
-      "_id": "message_id",
-      "content": "Message content",
-      "sender": "sender_id",
-      "receivers": [
-        {
-          "userId": "user_id",
-          "name": "User Name",
-          "avatarUrl": "avatar_url"
-        }
-      ],
-      "chatId": "chat_id",
-      "attachments": [
-        {
-          "name": "file_name",
-          "url": "file_url",
-          "type": "file_type"
-        }
-      ],
-      "replyTo": "reply_to_message_id",
-      "reactions": [
-        {
-          "userId": "user_id",
-          "emoji": "👍",
-          "timestamp": "2024-02-20T12:00:00Z"
-        }
-      ],
-      "createdAt": "2024-02-20T12:00:00Z",
-      "updatedAt": "2024-02-20T12:00:00Z"
+  "data": {
+    [MessageResponseType],
+    "pagination":{
+      "total":"total no. of messages",
+      "page":"page no.",
+      "limit":"limit messages",
+      "hasMore":boolean,
     }
-  ],
+  }
   "message": "Messages retrieved successfully",
   "success": true
 }
 ```
 
 #### Send Message
+
 ```http
 POST /api/v1/messages/:chatId
 ```
 
 Request:
+
 ```json
 {
   "content": "Message content"
+  "replyToId":(optional) "Reply to message Id"
 }
 ```
 
 For attachments, use multipart/form-data:
+
 ```
 attachments: [file1, file2, ...]
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 201,
-  "data": {
-    "_id": "message_id",
-    "content": "Message content",
-    "sender": "sender_id",
-    "receivers": [...],
-    "chatId": "chat_id",
-    "attachments": [...],
-    "replyTo": null,
-    "reactions": [],
-    "createdAt": "2024-02-20T12:00:00Z",
-    "updatedAt": "2024-02-20T12:00:00Z"
-  },
+  "data": MessageResponseType,
   "message": "Message sent successfully",
   "success": true
 }
 ```
 
 #### Delete Message
+
 ```http
 DELETE /api/v1/messages/:chatId/:messageId
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": {},
+  "data": messageId,
   "message": "Message deleted successfully",
   "success": true
 }
 ```
 
-#### Reply to Message
-```http
-POST /api/v1/messages/:chatId/reply
-```
-
-Request:
-```json
-{
-  "content": "Reply content",
-  "replyTo": "original_message_id"
-}
-```
-
-Response:
-```json
-{
-  "statusCode": 201,
-  "data": {
-    "_id": "message_id",
-    "content": "Reply content",
-    "sender": "sender_id",
-    "receivers": [...],
-    "chatId": "chat_id",
-    "attachments": [],
-    "replyTo": "original_message_id",
-    "reactions": [],
-    "createdAt": "2024-02-20T12:00:00Z",
-    "updatedAt": "2024-02-20T12:00:00Z"
-  },
-  "message": "Reply sent successfully",
-  "success": true
-}
-```
-
 #### Update Message Reaction
+
 ```http
 PATCH /api/v1/messages/:chatId/:messageId/reaction
 ```
 
 Request:
+
 ```json
 {
   "emoji": "👍"
@@ -946,114 +878,62 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": {
-    "_id": "message_id",
-    "content": "Message content",
-    "sender": "sender_id",
-    "receivers": [...],
-    "chatId": "chat_id",
-    "attachments": [...],
-    "replyTo": null,
-    "reactions": [
-      {
-        "userId": "user_id",
-        "emoji": "👍",
-        "timestamp": "2024-02-20T12:00:00Z"
-      }
-    ],
-    "createdAt": "2024-02-20T12:00:00Z",
-    "updatedAt": "2024-02-20T12:00:00Z"
-  },
+  "data": MessageResponseType,
   "message": "Reaction updated successfully",
   "success": true
 }
 ```
 
 #### Edit Message
+
 ```http
 PATCH /api/v1/messages/:chatId/:messageId/edit
 ```
 
 Request:
+
 ```json
 {
-  "content": "Updated message content"
+  "content": "Updated message content",
+  "replyToId": "reply_to_messageId"
 }
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": {
-    "_id": "message_id",
-    "content": "Updated message content",
-    "sender": "sender_id",
-    "receivers": [...],
-    "chatId": "chat_id",
-    "attachments": [...],
-    "replyTo": null,
-    "reactions": [...],
-    "edited": {
-      "isEdited": true,
-      "editedAt": "2024-02-20T12:30:00Z",
-      "previousContent": ["Original message content"]
-    },
-    "edits": [
-      {
-        "content": "Original message content",
-        "editedAt": "2024-02-20T12:30:00Z",
-        "editedBy": "sender_id"
-      }
-    ],
-    "createdAt": "2024-02-20T12:00:00Z",
-    "updatedAt": "2024-02-20T12:30:00Z"
-  },
+  "data": MessageResponseType
   "message": "Message edited successfully",
   "success": true
 }
 ```
 
 #### Mark Messages as Read
+
 ```http
 POST /api/v1/messages/:chatId/read
 ```
 
 Request:
+
 ```json
 {
-  "messageIds": ["message_id_1", "message_id_2"]  // Optional: if omitted, all unread messages will be marked as read
+  "messageIds": ["message_id_1", "message_id_2"]
 }
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": [
-    {
-      "_id": "message_id_1",
-      "content": "Message content",
-      "sender": "sender_id",
-      "receivers": [...],
-      "chatId": "chat_id",
-      "attachments": [...],
-      "replyTo": null,
-      "reactions": [...],
-      "readBy": [
-        {
-          "userId": "user_id",
-          "readAt": "2024-02-20T13:00:00Z"
-        }
-      ],
-      "createdAt": "2024-02-20T12:00:00Z",
-      "updatedAt": "2024-02-20T13:00:00Z"
-    },
-    // Additional messages
-  ],
+  "data": {"modifiedCount": 2}
   "message": "Messages marked as read",
   "success": true
 }
@@ -1062,52 +942,34 @@ Response:
 ### Message Pin Management
 
 #### Pin Message
+
 ```http
-POST /api/v1/messages/:chatId/:messageId/pin
+POST /api/v1/chats/:chatId/pin/:messageId
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": {
-    "_id": "chat_id",
-    "name": "Chat Name",
-    "type": "direct|group",
-    "participants": [...],
-    "admin": "admin_user_id",
-    "createdBy": "creator_user_id",
-    "lastMessage": {...},
-    "metadata": {
-      "pinnedMessages": ["message_id"]
-    }
-  },
+  "data": { "chatId": "chatId", "messageId": "messageId" },
   "message": "Message pinned successfully",
   "success": true
 }
 ```
 
 #### Unpin Message
+
 ```http
 DELETE /api/v1/messages/:chatId/:messageId/pin
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
-  "data": {
-    "_id": "chat_id",
-    "name": "Chat Name",
-    "type": "direct|group",
-    "participants": [...],
-    "admin": "admin_user_id",
-    "createdBy": "creator_user_id",
-    "lastMessage": {...},
-    "metadata": {
-      "pinnedMessages": []
-    }
-  },
+  "data": "data": {"chatId": "chatId", "messageId": "messageId"},
   "message": "Message unpinned successfully",
   "success": true
 }
@@ -1116,11 +978,13 @@ Response:
 ### User Update Webhook
 
 #### User Update Webhook
+
 ```http
 POST /api/v1/webhook/user
 ```
 
 Request:
+
 ```json
 {
   "userId": "user_id",
@@ -1133,6 +997,7 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "statusCode": 200,
@@ -1146,6 +1011,7 @@ Response:
 All endpoints may return the following error responses:
 
 ### 400 Bad Request
+
 ```json
 {
   "statusCode": 400,
@@ -1157,6 +1023,7 @@ All endpoints may return the following error responses:
 ```
 
 ### 401 Unauthorized
+
 ```json
 {
   "statusCode": 401,
@@ -1168,6 +1035,7 @@ All endpoints may return the following error responses:
 ```
 
 ### 403 Forbidden
+
 ```json
 {
   "statusCode": 403,
@@ -1179,6 +1047,7 @@ All endpoints may return the following error responses:
 ```
 
 ### 404 Not Found
+
 ```json
 {
   "statusCode": 404,
@@ -1190,6 +1059,7 @@ All endpoints may return the following error responses:
 ```
 
 ### 500 Internal Server Error
+
 ```json
 {
   "statusCode": 500,
@@ -1208,7 +1078,7 @@ The API returns strongly typed responses through both HTTP and WebSocket channel
 
 ```typescript
 // Define types to match API response structures
-import type { MessageResponseType, ChatResponseType } from '../types';
+import type { MessageResponseType, ChatResponseType } from "../types";
 
 // Use these types when consuming API responses
 async function getChatMessages(chatId: string): Promise<MessageResponseType[]> {
@@ -1217,10 +1087,13 @@ async function getChatMessages(chatId: string): Promise<MessageResponseType[]> {
 }
 
 // Type WebSocket event handlers
-socket.on(ChatEventEnum.MESSAGE_RECEIVED_EVENT, (message: MessageResponseType) => {
-  // Handle the strongly typed message object
-  addMessageToState(message);
-});
+socket.on(
+  ChatEventEnum.MESSAGE_RECEIVED_EVENT,
+  (message: MessageResponseType) => {
+    // Handle the strongly typed message object
+    addMessageToState(message);
+  }
+);
 
 socket.on(ChatEventEnum.NEW_CHAT_EVENT, (chat: ChatResponseType) => {
   // Handle the strongly typed chat object
@@ -1255,9 +1128,10 @@ The frontend should:
 The backend includes connection monitoring. Frontends should implement:
 
 1. **Connection Health Tracking**: Monitor and store the connection state
+
    ```typescript
    let isConnectionIssue = false;
-   
+
    // In API interceptors
    api.interceptors.response.use(
      (response) => {
@@ -1272,7 +1146,7 @@ The backend includes connection monitoring. Frontends should implement:
        return Promise.reject(error);
      }
    );
-   
+
    // Expose connection state
    export const isConnectionHealthy = (): boolean => {
      return !isConnectionIssue;
@@ -1280,11 +1154,12 @@ The backend includes connection monitoring. Frontends should implement:
    ```
 
 2. **Optimistic UI Updates**: Implement optimistic updates for better UX
+
    ```typescript
    // Example for marking messages as read
    // 1. Update UI immediately
-   setMessages(prev => updateReadStatus(prev, messageIds));
-   
+   setMessages((prev) => updateReadStatus(prev, messageIds));
+
    // 2. Then send API request
    try {
      await markMessagesAsRead({ chatId, messageIds });
@@ -1295,15 +1170,16 @@ The backend includes connection monitoring. Frontends should implement:
    ```
 
 3. **Race Condition Prevention**: Handle potential race conditions in socket events
+
    ```typescript
    // Use timestamps consistently across operations
    const readAt = new Date();
-   
+
    // Update local state with consistent timestamp
-   setMessages(prev => updateMessagesWithTimestamp(prev, readAt));
-   
+   setMessages((prev) => updateMessagesWithTimestamp(prev, readAt));
+
    // In socket event handler, use type checking for dates
-   const readAtDate = 
+   const readAtDate =
      data.readAt instanceof Date ? data.readAt : new Date(data.readAt);
    ```
 
@@ -1313,34 +1189,44 @@ For proper event handling with TypeScript:
 
 ```typescript
 // Import the response types
-import type { MessageResponseType, ChatResponseType } from '../types';
+import type { MessageResponseType, ChatResponseType } from "../types";
 
 // Handle new messages with proper typing
-socket.on(ChatEventEnum.MESSAGE_RECEIVED_EVENT, (message: MessageResponseType) => {
-  // Implementation
-});
+socket.on(
+  ChatEventEnum.MESSAGE_RECEIVED_EVENT,
+  (message: MessageResponseType) => {
+    // Implementation
+  }
+);
 
 // Handle edited messages with proper typing
-socket.on(ChatEventEnum.MESSAGE_EDITED_EVENT, (data: { 
-  messageId: string, 
-  content: string, 
-  chatId: string,
-  editedAt?: Date | string 
-}) => {
-  // Implementation
-});
+socket.on(
+  ChatEventEnum.MESSAGE_EDITED_EVENT,
+  (data: {
+    messageId: string;
+    content: string;
+    chatId: string;
+    editedAt?: Date | string;
+  }) => {
+    // Implementation
+  }
+);
 
 // Handle read receipts with proper date handling
-socket.on(ChatEventEnum.MESSAGE_READ_EVENT, (data: { 
-  chatId: string, 
-  readBy: { userId: string, readAt: Date | string },
-  messageIds: string[] 
-}) => {
-  // Implementation with date type checking
-  const readAt = data.readBy.readAt instanceof Date 
-    ? data.readBy.readAt 
-    : new Date(data.readBy.readAt);
-});
+socket.on(
+  ChatEventEnum.MESSAGE_READ_EVENT,
+  (data: {
+    chatId: string;
+    readBy: { userId: string; readAt: Date | string };
+    messageIds: string[];
+  }) => {
+    // Implementation with date type checking
+    const readAt =
+      data.readBy.readAt instanceof Date
+        ? data.readBy.readAt
+        : new Date(data.readBy.readAt);
+  }
+);
 
 // Handle chat updates
 socket.on(ChatEventEnum.NEW_CHAT_EVENT, (chat: ChatResponseType) => {

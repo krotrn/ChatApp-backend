@@ -103,7 +103,7 @@ const chatMessageSchema = new Schema(
     replyToId: { type: Schema.Types.ObjectId, ref: "ChatMessage" },
 
     formatting: {
-      type: Map,
+      type: Object,
       of: String,
       default: new Map(),
     },

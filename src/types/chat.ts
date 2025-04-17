@@ -21,9 +21,9 @@ export interface ChatType extends mongoose.Document {
   type: "direct" | "group" | "channel";
   createdBy: string;
   deletedFor: DeletedForEntry[];
-  metadata?: {
+  metadata: {
     pinnedMessage: mongoose.Types.ObjectId[];
-    customePermissions?: mongoose.Schema.Types.Mixed;
+    customePermissions: mongoose.Schema.Types.Mixed;
   };
   createdAt: Date;
   updatedAt: Date;
