@@ -541,7 +541,7 @@ Retrieves all chats for the authenticated user.
 #### Create or Get One-on-One Chat
 
 ```http
-POST /api/v1/chats/chat
+POST /api/v1/chats
 ```
 
 Request:
@@ -801,7 +801,7 @@ Response:
 {
   "statusCode": 200,
   "data": {
-    [MessageResponseType],
+    "messages":[MessageResponseType],
     "pagination":{
       "total":"total no. of messages",
       "page":"page no.",

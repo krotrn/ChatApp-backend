@@ -97,7 +97,7 @@ Authorization: Bearer <your_jwt_token>
 ### Chat Routes
 
 - **GET /api/v1/chats**: Get all chats for the authenticated user
-- **POST /api/v1/chats/chat**: Create or get a one-on-one chat
+- **POST /api/v1/chats**: Create or get a one-on-one chat
 - **GET /api/v1/chats/chat/:chatId**: Get chat by ID
 - **DELETE /api/v1/chats/chat/:chatId**: Delete one-on-one chat
 - **DELETE /api/v1/chats/chat/:chatId/me**: Delete chat for the current user
