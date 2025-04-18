@@ -11,7 +11,7 @@ export default async (
   try {
     const token = socket.handshake.auth.token;
     if (!token) {
-      return next(new Error("Authentication required token is missing."));
+      return next(new ApiError(400, "Authentication required token is missing."));
     }
 
     const accessTokenSecret = process.env.JWT_SECRET;
@@ -25,7 +25,7 @@ export default async (
     ) as CustomSocket["user"];
 
     if (!decoded) {
-      return next(new Error("Invalid token"));
+      return next(new ApiError(400, "Invalid token"));
     }
     const isValid = await validateUser([decoded.id]);
     if (!isValid) return next(new ApiError(403, "Invalid user"));
@@ -34,7 +34,7 @@ export default async (
     next();
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
-      next(new Error("Invalid token"));
+      next(new ApiError(400, "Invalid token"));
     } else {
       console.error("Socket auth error:", error);
       next(new ApiError(500, "Authentication failed"));

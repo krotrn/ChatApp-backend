@@ -5,8 +5,10 @@ import type { CustomSocket } from "../types/Socket";
 import { ChatEventEnum } from "../utils/constants";
 
 const initializeSocketIO = (io: Server): void => {
-  // authentication middleware
   io.use(authenticateSocket);
+  io.engine.on("connection_error", (err) => {
+    console.error("Socket connection error:", err);
+  });
 
   // Socket.io connection event
   io.on("connection", async (socket: CustomSocket) => {
@@ -48,7 +50,7 @@ const initializeSocketIO = (io: Server): void => {
       console.error("Socket connection error:", error);
       socket.emit(
         ChatEventEnum.SOCKET_ERROR_EVENT,
-        (error as Error)?.message || "An error occurred while connecting.",
+        (error as Error)?.message || "An error occurred while connecting."
       );
     }
   });
@@ -64,14 +66,22 @@ const emitSocketEvent = <T>(
   req: EmitSocketEventRequest,
   roomId: string,
   event: string,
-  payload: T,
+  payload: T
 ): void => {
-  const io = req.app.get("io") as Server;
-  if (!io) {
-    console.error("Socket.io instance not found");
-    return;
+  try {
+    if (!roomId) {
+      console.error("Room ID is required to emit socket event");
+      return;
+    }
+    const io = req.app.get("io") as Server;
+    if (!io) {
+      console.error("Socket.io instance not found");
+      return;
+    }
+    io.to(roomId).emit(event, payload);
+  } catch (error) {
+    console.error("Error emitting socket event:", error);
   }
-  io.to(roomId).emit(event, payload);
 };
 
 export { initializeSocketIO, emitSocketEvent };
