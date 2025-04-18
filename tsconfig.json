@@ -3,9 +3,8 @@
     "target": "ES2020",
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "noEmit": false,
+    "noEmit": true,
     "rootDir": "./src",
-    "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -16,7 +15,7 @@
     "sourceMap": true,
     "declaration": true,
     "noImplicitAny": true,
-    "baseUrl": ".",
+    "baseUrl": "."
   },
   "include": [
     "src/**/*"

@@ -86,13 +86,13 @@ app.use("/api/v1/webhook", webhookRouter);
 
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
 (async (): Promise<void> => {
   try {
     await connectDB();
     httpServer.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+      console.log(`Server is running on http://localhost:${PORT}`);
     });
   } catch (error) {
     console.error("Database connection failed:", error);

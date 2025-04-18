@@ -8,7 +8,6 @@ import {
   ReadByType,
   User,
   MessageResponseType,
-  EditType,
 } from "../../types/message";
 import type {
   ChatParticipant,
@@ -28,23 +27,6 @@ import { emitSocketEvent } from "../../socket";
 import { ChatEventEnum } from "../../utils/constants";
 import { chatMessageCommonAggregation } from "./aggregations";
 
-interface MessageDataType {
-  sender: User;
-  receivers: User[];
-  chatId: Types.ObjectId;
-  content: string;
-  attachments: AttachmentType[];
-  status: StatusEnum;
-  reactions: ReactionType[];
-  edited: { isEdited: boolean; editedAt: Date };
-  edits: EditType[];
-  readBy: ReadByType[];
-  deletedFor: DeletedForEntry[];
-  formatting: Record<string, unknown>;
-  createdAt: Date;
-  updatedAt: Date;
-  replyToId?: Types.ObjectId;
-}
 
 // Get all messages
 export const getAllMessages = async (
@@ -183,7 +165,7 @@ export const sendMessage = async (
     };
 
     const currentDate = new Date();
-    const messageData: MessageDataType = {
+    const messageData: Partial<MessageType> = {
       sender,
       receivers,
       chatId: new Types.ObjectId(chatId),
@@ -196,6 +178,7 @@ export const sendMessage = async (
       readBy: [],
       deletedFor: [],
       formatting: {},
+      replyToId: replyToId ? new Types.ObjectId(replyToId) : undefined,
       createdAt: currentDate,
       updatedAt: currentDate,
     };
@@ -275,7 +258,7 @@ export const deleteMessage = async (
     const { chatId, messageId } = req.params;
     const currentUser = (req as AuthenticatedRequest).user;
 
-    const chat: ChatType | null = await Chat.findById(chatId, { session });
+    const chat: ChatType | null = await Chat.findById(chatId);
     if (
       !chat ||
       !chat.participants.some(
@@ -285,9 +268,7 @@ export const deleteMessage = async (
       throw new ApiError(404, "Chat does not exist");
     }
 
-    const message: MessageType | null = await ChatMessage.findById(messageId, {
-      session,
-    });
+    const message: MessageType | null = await ChatMessage.findById(messageId);
     if (!message) {
       throw new ApiError(404, "Message does not exist");
     }
