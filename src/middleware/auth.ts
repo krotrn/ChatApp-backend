@@ -1,24 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import ApiError from "../utils/ApiError";
-import type { DecodedToken } from "../types/decodedToken";
-
-interface JwtPayload {
-  id: string;
-  name: string;
-  avatarUrl: string;
-  email: string;
-  username: string;
-  role: string;
-  exp: number;
-  iat: number;
-}
-
-declare module "express" {
-  interface Request {
-    user?: DecodedToken;
-  }
-}
+import { JwtPayload } from "src/types/custom";
 
 export const authenticate = (
   req: Request,

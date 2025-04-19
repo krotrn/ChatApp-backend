@@ -9,7 +9,6 @@ import { ChatEventEnum } from "../../utils/constants";
 import { removeLocalFile } from "../../utils/fileOperations";
 import { validateUser } from "../../utils/userHelper";
 import { chatCommonAggregation } from "./aggregations";
-import type { AuthenticatedRequest } from "../../types/request";
 import type {
   ChatParticipant,
   DeletedForEntry,
@@ -59,7 +58,11 @@ export const createOrGetAOneOnOneChat = async (
       participants,
       name,
     }: { participants: ChatParticipant[]; name: string } = req.body;
-    const currentUser = (req as AuthenticatedRequest).user;
+    const currentUser = req.user;
+    if (!currentUser) {
+      res.status(400).json(new ApiError(400, "User not Found"));
+      return;
+    }
 
     const otherParticipant = participants[0];
     if (otherParticipant.userId === currentUser.id) {
@@ -157,6 +160,12 @@ export const deleteOneOnOneChat = async (
 ): Promise<void> => {
   const session = await startSession();
   session.startTransaction();
+  const currentUser = req.user;
+
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   try {
     const { chatId } = req.params;
@@ -180,7 +189,7 @@ export const deleteOneOnOneChat = async (
     await session.commitTransaction();
 
     payload.participants.forEach((participant: ChatParticipant) => {
-      if (participant.userId === (req as AuthenticatedRequest).user.id) return;
+      if (participant.userId === currentUser.id) return;
       emitSocketEvent(
         req,
         participant.userId,
@@ -225,7 +234,11 @@ export const deleteChatForMe = async (
   res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   const chat: ChatType | null = await Chat.findById(chatId);
   if (!chat) {

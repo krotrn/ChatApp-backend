@@ -5,6 +5,7 @@ export const chatMessageCommonAggregation = () => {
         sender: 1,
         receivers: 1,
         content: 1,
+        chatId: 1,
         attachments: 1,
         status: 1,
         reactions: 1,

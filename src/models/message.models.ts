@@ -104,8 +104,7 @@ const chatMessageSchema = new Schema(
 
     formatting: {
       type: Object,
-      of: String,
-      default: new Map(),
+      default: {},
     },
   },
   {

@@ -7,7 +7,6 @@ import { ApiResponse } from "../../utils/ApiResponse";
 import { ChatEventEnum } from "../../utils/constants";
 import { validateUser } from "../../utils/userHelper";
 import { chatCommonAggregation } from "./aggregations";
-import type { AuthenticatedRequest } from "../../types/request";
 import type {
   ChatParticipant,
   ChatResponseType,
@@ -25,7 +24,11 @@ export const createAGroupChat = async (
 
   try {
     const { name, participants } = req.body;
-    const currentUser = (req as AuthenticatedRequest).user;
+    const currentUser = req.user;
+    if (!currentUser) {
+      res.status(400).json(new ApiError(400, "User not Found"));
+      return;
+    }
 
     if (!name?.trim()) {
       throw new ApiError(400, "Group name is required");
@@ -129,7 +132,11 @@ export const updateGroupChat = async (
 ): Promise<void> => {
   const { chatId } = req.params;
   const { name, avatarUrl } = req.body;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   if (!name?.trim()) {
     throw new ApiError(400, "Name is required");
@@ -184,7 +191,11 @@ export const deleteGroupChat = async (
   res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   const chat = await Chat.findById(chatId);
   if (!chat) {
@@ -227,7 +238,11 @@ export const addNewParticipantInGroupChat = async (
 ): Promise<void> => {
   const { chatId } = req.params;
   const { participants } = req.body;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   if (!participants || !participants.length) {
     throw new ApiError(400, "Participants are required");
@@ -312,7 +327,11 @@ export const removeParticipantFromGroupChat = async (
   res: Response,
 ): Promise<void> => {
   const { chatId, userId } = req.params;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   if (userId === currentUser.id) {
     throw new ApiError(400, "You cannot remove yourself from the group");
@@ -376,7 +395,11 @@ export const leaveGroupChat = async (
   res: Response,
 ): Promise<void> => {
   const { chatId } = req.params;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   const chat = await Chat.findById(chatId);
   if (!chat) {

@@ -6,7 +6,6 @@ import { emitSocketEvent } from "../../socket";
 import ApiError from "../../utils/ApiError";
 import { ApiResponse } from "../../utils/ApiResponse";
 import { ChatEventEnum } from "../../utils/constants";
-import type { AuthenticatedRequest } from "../../types/request";
 import type { ChatParticipant, ChatType } from "../../types/chat";
 import { MessageType } from "../../types/message";
 // Pin Message
@@ -15,7 +14,11 @@ export const pinMessage = async (
   res: Response,
 ): Promise<void> => {
   const { chatId, messageId } = req.params;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   const chat: ChatType | null = await Chat.findById(chatId);
   if (!chat) {
@@ -87,7 +90,11 @@ export const unpinMessage = async (
   res: Response,
 ): Promise<void> => {
   const { chatId, messageId } = req.params;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   const chat: ChatType | null = await Chat.findById(chatId);
   if (!chat) {

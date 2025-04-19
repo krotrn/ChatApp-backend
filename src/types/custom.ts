@@ -1,4 +1,4 @@
-export interface DecodedTokenType {
+export interface JwtPayload {
   id: string;
   name: string;
   avatarUrl: string;
@@ -7,4 +7,9 @@ export interface DecodedTokenType {
   role: string;
   exp: number;
   iat: number;
+}
+declare module "express" {
+  interface Request {
+    user?: JwtPayload;
+  }
 }

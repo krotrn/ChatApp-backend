@@ -14,7 +14,6 @@ import type {
   ChatType,
   DeletedForEntry,
 } from "../../types/chat";
-import type { AuthenticatedRequest } from "../../types/request";
 import ApiError from "../../utils/ApiError";
 import { ApiResponse } from "../../utils/ApiResponse";
 import { getLocalPath, removeLocalFile } from "../../utils/fileOperations";
@@ -34,6 +33,11 @@ export const getAllMessages = async (
 ): Promise<void> => {
   const { chatId } = req.params;
   const { page = "1", limit = "50", before, after } = req.query;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   const pageNumber = parseInt(page as string, 10);
   const limitNumber = parseInt(limit as string, 10);
@@ -54,8 +58,7 @@ export const getAllMessages = async (
 
   if (
     !selectedChat.participants.some(
-      (participant: User) =>
-        participant.userId === (req as AuthenticatedRequest).user.id,
+      (participant: User) => participant.userId === currentUser.id,
     )
   ) {
     throw new ApiError(400, "User is not part of chat.");
@@ -114,6 +117,11 @@ export const sendMessage = async (
     const { chatId } = req.params;
     const { content, replyToId }: { content: string; replyToId?: string } =
       req.body;
+    const currentUser = req.user;
+    if (!currentUser) {
+      res.status(400).json(new ApiError(400, "User not Found"));
+      return;
+    }
 
     let attachments: Express.Multer.File[] = [];
     if (!Array.isArray(req.files) && req.files?.attachments) {
@@ -130,10 +138,7 @@ export const sendMessage = async (
     }
 
     const receivers: User[] = selectedChat.participants
-      .filter(
-        (participant) =>
-          participant.userId !== (req as AuthenticatedRequest).user.id,
-      )
+      .filter((participant) => participant.userId !== currentUser.id)
       .map((participant: ChatParticipant) => ({
         userId: participant.userId,
         name: participant.name,
@@ -158,9 +163,9 @@ export const sendMessage = async (
     }));
 
     const sender: User = {
-      userId: (req as AuthenticatedRequest).user.id,
-      name: (req as AuthenticatedRequest).user.name,
-      avatarUrl: (req as AuthenticatedRequest).user.avatarUrl,
+      userId: currentUser.id,
+      name: currentUser.name,
+      avatarUrl: currentUser.avatarUrl,
     };
 
     const currentDate = new Date();
@@ -171,15 +176,8 @@ export const sendMessage = async (
       content: content,
       attachments: messageFiles,
       status: StatusEnum.sent,
-      reactions: [],
       edited: { isEdited: false, editedAt: currentDate },
-      edits: [],
-      readBy: [],
-      deletedFor: [],
-      formatting: {},
       replyToId: replyToId ? new Types.ObjectId(replyToId) : undefined,
-      createdAt: currentDate,
-      updatedAt: currentDate,
     };
 
     if (replyToId) {
@@ -221,8 +219,7 @@ export const sendMessage = async (
       );
     } else {
       for (const participant of updateChat.participants) {
-        if (participant.userId === (req as AuthenticatedRequest).user.id)
-          continue;
+        if (participant.userId === currentUser.id) continue;
         emitSocketEvent(
           req,
           participant.userId,
@@ -255,7 +252,11 @@ export const deleteMessage = async (
 
   try {
     const { chatId, messageId } = req.params;
-    const currentUser = (req as AuthenticatedRequest).user;
+    const currentUser = req.user;
+    if (!currentUser) {
+      res.status(400).json(new ApiError(400, "User not Found"));
+      return;
+    }
 
     const chat: ChatType | null = await Chat.findById(chatId);
     if (
@@ -339,7 +340,11 @@ export const deleteMessageForMe = async (
   res: Response,
 ): Promise<void> => {
   const { chatId, messageId } = req.params;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   const chat = await Chat.findById(chatId);
   if (
@@ -381,7 +386,11 @@ export const updateReaction = async (
 ): Promise<void> => {
   const { chatId, messageId } = req.params;
   const { emoji } = req.body;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   if (!emoji) {
     throw new ApiError(400, "Emoji is required");
@@ -473,9 +482,13 @@ export const editMessage = async (
 ): Promise<void> => {
   const { chatId, messageId } = req.params;
   const { content, replyToId } = req.body;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
-  if (!content?.trim() || !replyToId) {
+  if (!content.trim() && !replyToId) {
     throw new ApiError(400, "Content is required");
   }
 
@@ -544,7 +557,11 @@ export const markMessagesAsRead = async (
 ): Promise<void> => {
   const { chatId } = req.params;
   const { messageIds } = req.body;
-  const currentUser = (req as AuthenticatedRequest).user;
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
 
   if (!messageIds || !messageIds.length) {
     throw new ApiError(400, "Message IDs are required");

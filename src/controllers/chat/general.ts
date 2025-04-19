@@ -2,7 +2,6 @@ import type { Request, Response } from "express";
 import { Chat } from "../../models/chat.models";
 import { ApiResponse } from "../../utils/ApiResponse";
 import { chatCommonAggregation } from "./aggregations";
-import type { AuthenticatedRequest } from "../../types/request";
 import type { ChatResponseType } from "../../types/chat";
 import ApiError from "../../utils/ApiError";
 
@@ -23,13 +22,17 @@ export const getAllChats = async (
   ) {
     throw new ApiError(400, "Invalid page or limit number");
   }
+  if (!req.user) {
+    res.status(400).json(new ApiError(400, "User not Found"));
+    return;
+  }
   const filter = {
     participants: {
-      $elemMatch: { userId: (req as AuthenticatedRequest).user.id },
+      $elemMatch: { userId: req.user.id },
     },
     deletedFor: {
       $not: {
-        $elemMatch: { userId: (req as AuthenticatedRequest).user.id },
+        $elemMatch: { userId: req.user.id },
       },
     },
   };

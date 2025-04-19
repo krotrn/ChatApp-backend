@@ -83,6 +83,9 @@ console.log("Authenticating...");
 app.use("/api/v1/chats", chatRouter);
 app.use("/api/v1/messages", messageRouter);
 app.use("/api/v1/webhook", webhookRouter);
+app.use("/api/v1/ping", (req, res) => {
+  res.status(200).json({ message: "pong" });
+});
 
 app.use(errorHandler);
 
