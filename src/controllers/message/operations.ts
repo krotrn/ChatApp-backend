@@ -27,7 +27,6 @@ import { emitSocketEvent } from "../../socket";
 import { ChatEventEnum } from "../../utils/constants";
 import { chatMessageCommonAggregation } from "./aggregations";
 
-
 // Get all messages
 export const getAllMessages = async (
   req: Request,

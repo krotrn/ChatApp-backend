@@ -11,7 +11,9 @@ export default async (
   try {
     const token = socket.handshake.auth.token;
     if (!token) {
-      return next(new ApiError(400, "Authentication required token is missing."));
+      return next(
+        new ApiError(400, "Authentication required token is missing."),
+      );
     }
 
     const accessTokenSecret = process.env.JWT_SECRET;
