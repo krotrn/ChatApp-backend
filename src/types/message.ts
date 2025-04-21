@@ -7,6 +7,7 @@ export interface AttachmentType {
   localPath: string;
   status: StatusEnum;
   type: string;
+  deletedFor: DeletedForEntry[];
 }
 
 export enum StatusEnum {

@@ -2,24 +2,6 @@ import mongoose, { Schema } from "mongoose";
 
 import { StatusEnum } from "../types/message";
 
-const attachmentSchema = new Schema({
-  name: {
-    type: String,
-    required: true,
-  },
-  url: String,
-  localPath: String,
-  status: {
-    type: String,
-    enum: Object.values(StatusEnum),
-    default: StatusEnum.sent,
-  },
-  type: {
-    type: String,
-    required: true,
-  },
-});
-
 const reactionSchema = new Schema({
   userId: String,
   emoji: String,
@@ -46,6 +28,28 @@ const userSchema = new Schema({
   userId: String,
   name: String,
   avatarUrl: String,
+});
+
+const attachmentSchema = new Schema({
+  name: {
+    type: String,
+    required: true,
+  },
+  url: String,
+  localPath: String,
+  status: {
+    type: String,
+    enum: Object.values(StatusEnum),
+    default: StatusEnum.sent,
+  },
+  type: {
+    type: String,
+    required: true,
+  },
+  deletedFor: {
+    type: [deletedForSchema],
+    default: [],
+  },
 });
 
 const chatMessageSchema = new Schema(

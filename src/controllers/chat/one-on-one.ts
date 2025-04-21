@@ -15,31 +15,80 @@ import type {
   ChatResponseType,
   ChatType,
 } from "../../types/chat";
+import { MessageType } from "src/types/message";
 
 // Delete Cascade Chat Messages - Helper function
 export const deleteCascadeChatMessages = async (
   chatId: string,
   session: ClientSession,
+  forEveryone = false,
+  userId?: string,
 ): Promise<void> => {
   try {
-    const messages = await ChatMessage.find({ chatId });
-
-    for (const message of messages) {
-      if (message.attachments?.length) {
-        for (const attachment of message.attachments) {
-          try {
-            await removeLocalFile(attachment.localPath);
-          } catch (error) {
-            console.error(
-              `Failed to delete file: ${attachment.localPath}`,
-              error,
-            );
-          }
+    if (forEveryone) {
+      const messages: MessageType[] = await ChatMessage.find({
+        chatId,
+      }).session(session);
+      for (const message of messages) {
+        if (message.attachments?.length) {
+          await Promise.all(
+            message.attachments.map(async (attachment) => {
+              try {
+                await removeLocalFile(attachment.localPath);
+              } catch (error) {
+                console.error(
+                  `Failed to delete file: ${attachment.localPath}`,
+                  error,
+                );
+              }
+            }),
+          );
         }
       }
-    }
+      await ChatMessage.deleteMany({ chatId }, { session });
+    } else {
+      if (!userId) {
+        throw new Error("userId is required when forEveryone is false");
+      }
+      const chat: ChatType = await Chat.findById(chatId).session(session);
+      if (!chat) {
+        throw new Error("Chat not found");
+      }
+      const participantUserIds = chat.participants.map((p) => p.userId);
 
-    await ChatMessage.deleteMany({ chatId }, { session });
+      await ChatMessage.updateMany(
+        { chatId },
+        { $addToSet: { deletedFor: { userId, deletedAt: new Date() } } },
+        { session },
+      );
+
+      const messagesToDelete: MessageType[] = await ChatMessage.find({
+        chatId,
+        "deletedFor.userId": { $all: participantUserIds },
+      }).session(session);
+
+      for (const message of messagesToDelete) {
+        if (message.attachments?.length) {
+          await Promise.all(
+            message.attachments.map(async (attachment) => {
+              try {
+                await removeLocalFile(attachment.localPath);
+              } catch (error) {
+                console.error(
+                  `Failed to delete file: ${attachment.localPath}`,
+                  error,
+                );
+              }
+            }),
+          );
+        }
+      }
+      const messageIdsToDelete = messagesToDelete.map((m) => m._id);
+      await ChatMessage.deleteMany(
+        { _id: { $in: messageIdsToDelete } },
+        { session },
+      );
+    }
   } catch (error) {
     throw error;
   }
@@ -98,6 +147,17 @@ export const createOrGetAOneOnOneChat = async (
 
     if (existingChat.length) {
       await session.commitTransaction();
+      if (existingChat[0].deletedFor.length) {
+        await Chat.findByIdAndUpdate(
+          existingChat[0]._id,
+          {
+            $pull: {
+              deletedFor: { userId: currentUser.id },
+            },
+          },
+          { session },
+        );
+      }
       res
         .status(200)
         .json(
@@ -183,7 +243,7 @@ export const deleteOneOnOneChat = async (
       throw new ApiError(400, "This action is only for direct chats");
     }
 
-    await deleteCascadeChatMessages(chatId, session);
+    await deleteCascadeChatMessages(chatId, session, true);
     await Chat.findByIdAndDelete(chatId).session(session);
 
     await session.commitTransaction();
@@ -214,8 +274,25 @@ export const getChatById = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
+  const chatId = req.params.chatId;
+  if (!Types.ObjectId.isValid(chatId)) {
+    res.status(400).json(new ApiError(400, "Invalid chat ID"));
+    return;
+  }
+
+  const currentUser = req.user;
+  if (!currentUser) {
+    res.status(400).json(new ApiError(400, "Invalid chat ID"));
+    return;
+  }
+
   const chat: ChatResponseType[] = await Chat.aggregate([
-    { $match: { _id: new Types.ObjectId(req.params.chatId) } },
+    {
+      $match: {
+        _id: new Types.ObjectId(chatId),
+        participants: { $elemMatch: { userId: currentUser.id } },
+      },
+    },
     ...chatCommonAggregation(),
   ]);
 
@@ -286,7 +363,7 @@ export const deleteChatForMe = async (
       const session = await startSession();
       session.startTransaction();
 
-      await deleteCascadeChatMessages(chatId, session);
+      await deleteCascadeChatMessages(chatId, session, true);
       await Chat.findByIdAndDelete(chatId).session(session);
 
       await session.commitTransaction();

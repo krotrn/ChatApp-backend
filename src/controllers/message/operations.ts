@@ -66,8 +66,12 @@ export const getAllMessages = async (
 
   const filter: {
     chatId: Types.ObjectId;
+    deletedFor?: { $not: { $elemMatch: { userId: string } } };
     createdAt?: { $lt?: Date; $gt?: Date };
-  } = { chatId: new Types.ObjectId(chatId) };
+  } = {
+    chatId: new Types.ObjectId(chatId),
+    deletedFor: { $not: { $elemMatch: { userId: currentUser.id } } },
+  };
 
   if (before) {
     filter.createdAt = { $lt: new Date(before as string) };
@@ -85,7 +89,6 @@ export const getAllMessages = async (
     { $limit: limitNumber },
   ]);
 
-  // Get total count for pagination metadata
   const total = await ChatMessage.countDocuments(filter);
 
   res.status(200).json(
@@ -160,6 +163,7 @@ export const sendMessage = async (
       localPath: getLocalPath(attachment.filename),
       type: attachment.mimetype || "application/octet-stream",
       status: StatusEnum.sent,
+      deletedFor: [],
     }));
 
     const sender: User = {

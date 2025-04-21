@@ -430,7 +430,7 @@ export const leaveGroupChat = async (
       try {
         const session = await startSession();
         session.startTransaction();
-        await deleteCascadeChatMessages(chatId, session);
+        await deleteCascadeChatMessages(chatId, session, true);
         await Chat.findByIdAndDelete(chatId).session(session);
 
         await session.commitTransaction();
