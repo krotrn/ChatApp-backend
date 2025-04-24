@@ -84,6 +84,11 @@ const chatMessageSchema = new Schema(
       default: [],
     },
 
+    isPinned: {
+      type: Boolean,
+      default: false,
+    },
+
     edited: {
       isEdited: { type: Boolean, default: false },
       editedAt: { type: Date, default: Date.now },

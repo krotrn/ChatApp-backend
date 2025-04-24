@@ -48,6 +48,7 @@ export interface MessageType extends Document {
   attachments: AttachmentType[];
   status: StatusEnum;
   reactions: ReactionType[];
+  isPinned: boolean;
   edited: { isEdited: boolean; editedAt: Date };
   edits: EditType[];
   readBy: ReadByType[];
