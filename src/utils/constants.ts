@@ -3,8 +3,6 @@ export const UserRolesEnum: { ADMIN: "ADMIN"; USER: "USER" } = {
   USER: "USER",
 };
 
-export const AvailableUserRoles = Object.values(UserRolesEnum);
-
 export const ChatEventEnum = Object.freeze({
   CONNECTED_EVENT: "connected",
   DISCONNECT_EVENT: "disconnect",
@@ -18,10 +16,8 @@ export const ChatEventEnum = Object.freeze({
   TYPING_EVENT: "typing",
   MESSAGE_DELETE_EVENT: "messageDeleted",
   CHAT_DELETED_EVENT: "chatDeleted",
-  DELETE_CHAT_EVENT: "chatDeleted",
-  MESSAGE_PIN_EVENT: "messagePin",
-  MESSAGE_PINNED_EVENT: "messagePin",
-  MESSAGE_UNPINNED_EVENT: "messagePin",
+  MESSAGE_PINNED_EVENT: "messagePinned",
+  MESSAGE_UNPINNED_EVENT: "messageUnpinned",
   CHAT_UPDATED_EVENT: "chatUpdated",
   REMOVED_FROM_CHAT: "removedFromChat",
   MESSAGE_REACTION_EVENT: "messageReaction",
@@ -30,5 +26,3 @@ export const ChatEventEnum = Object.freeze({
   MESSAGE_EDITED_EVENT: "messageEdited",
   MESSAGE_READ_EVENT: "messageRead",
 });
-
-export const AvailableChatEvents = Object.values(ChatEventEnum);

@@ -57,6 +57,9 @@ export const pinMessage = async (
       $addToSet: {
         "metadata.pinnedMessage": new Types.ObjectId(messageId),
       },
+      $set: {
+        isPinned: true,
+      },
     },
     { new: true },
   );
@@ -66,11 +69,15 @@ export const pinMessage = async (
   }
 
   chat.participants.forEach((participant: ChatParticipant) => {
-    emitSocketEvent(req, participant.userId, ChatEventEnum.MESSAGE_PIN_EVENT, {
-      chatId,
-      messageId,
-      isPinned: true,
-    });
+    emitSocketEvent(
+      req,
+      participant.userId,
+      ChatEventEnum.MESSAGE_PINNED_EVENT,
+      {
+        chatId,
+        messageId,
+      },
+    );
   });
 
   res
@@ -124,6 +131,9 @@ export const unpinMessage = async (
       $pull: {
         "metadata.pinnedMessage": new Types.ObjectId(messageId),
       },
+      $set: {
+        isPinned: false,
+      },
     },
     { new: true },
   );
@@ -133,11 +143,15 @@ export const unpinMessage = async (
   }
 
   chat.participants.forEach((participant: ChatParticipant) => {
-    emitSocketEvent(req, participant.userId, ChatEventEnum.MESSAGE_PIN_EVENT, {
-      chatId,
-      messageId,
-      isPinned: false,
-    });
+    emitSocketEvent(
+      req,
+      participant.userId,
+      ChatEventEnum.MESSAGE_UNPINNED_EVENT,
+      {
+        chatId,
+        messageId,
+      },
+    );
   });
 
   res

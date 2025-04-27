@@ -315,6 +315,7 @@ export const deleteMessage = async (
 
     // Send events to all participants
     chat.participants.forEach((participant: ChatParticipant) => {
+      if (participant.userId === currentUser.id) return;
       emitSocketEvent(
         req,
         participant.userId,
@@ -467,7 +468,7 @@ export const updateReaction = async (
     emitSocketEvent(
       req,
       participant.userId,
-      ChatEventEnum.MESSAGE_EDITED_EVENT,
+      ChatEventEnum.MESSAGE_REACTION_EVENT,
       updatedMessage,
     );
   });

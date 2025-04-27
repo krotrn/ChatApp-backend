@@ -134,17 +134,6 @@ const PORT = process.env.PORT || 10000;
     httpServer.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
     });
-
-    if (process.env.ENABLE_SERVER_KEEPALIVE === "true") {
-      const keepAliveInterval = parseInt(
-        process.env.ENABLE_SERVER_KEEPALIVE_INTERVAL || "840000",
-        10,
-      );
-      setInterval(() => {
-        console.log("Running server keep-alive ping...");
-        http.get(`http://localhost:${PORT}/api/v1/ping`);
-      }, keepAliveInterval);
-    }
   } catch (error) {
     console.error("Server startup failed:", error);
     process.exit(1);

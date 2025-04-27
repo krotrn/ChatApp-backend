@@ -197,7 +197,7 @@ export const deleteGroupChat = async (
     return;
   }
 
-  const chat = await Chat.findById(chatId);
+  const chat: ChatType | null = await Chat.findById(chatId);
   if (!chat) {
     throw new ApiError(404, "Chat not found");
   }
@@ -210,7 +210,7 @@ export const deleteGroupChat = async (
     throw new ApiError(403, "Only admin can delete the group");
   }
 
-  const deletedChat = await Chat.findByIdAndDelete(chatId);
+  const deletedChat: ChatType | null = await Chat.findByIdAndDelete(chatId);
   if (!deletedChat) {
     throw new ApiError(500, "Internal server error");
   }
