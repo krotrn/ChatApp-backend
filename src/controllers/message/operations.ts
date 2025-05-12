@@ -162,7 +162,7 @@ export const sendMessage = async (
       url: getStaticFilePath(req, attachment.filename),
       localPath: getLocalPath(attachment.filename),
       type: attachment.mimetype || "application/octet-stream",
-      status: StatusEnum.sent,
+      status: StatusEnum.SENT,
       deletedFor: [],
     }));
 
@@ -179,7 +179,7 @@ export const sendMessage = async (
       chatId: new Types.ObjectId(chatId),
       content: content,
       attachments: messageFiles,
-      status: StatusEnum.sent,
+      status: StatusEnum.SENT,
       edited: { isEdited: false, editedAt: currentDate },
       replyToId: replyToId ? new Types.ObjectId(replyToId) : undefined,
     };

@@ -40,7 +40,7 @@ const attachmentSchema = new Schema({
   status: {
     type: String,
     enum: Object.values(StatusEnum),
-    default: StatusEnum.sent,
+    default: StatusEnum.SENT,
   },
   type: {
     type: String,

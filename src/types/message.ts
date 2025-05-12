@@ -11,9 +11,10 @@ export interface AttachmentType {
 }
 
 export enum StatusEnum {
-  "sent",
-  "delivered",
-  "read",
+  SENT,
+  DELIVERED,
+  READ,
+  FAILED,
 }
 
 export interface ReactionType {

@@ -36,11 +36,7 @@ export const validateUser = async (
       lastError = error;
 
       if (axios.isAxiosError(error)) {
-        console.error(`Validation error (retries left: ${retries}):`, {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-        });
+        console.error(`Validation error (retries left: ${retries}):`, error);
 
         if (!error.response || error.response.status >= 500) {
           await new Promise((resolve) => setTimeout(resolve, 500));
