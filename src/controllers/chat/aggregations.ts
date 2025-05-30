@@ -18,21 +18,6 @@ export const chatCommonAggregation = () => {
       },
     },
     {
-      $lookup: {
-        from: "chatmessages",
-        let: { chatId: "$_id" },
-        pipeline: [
-          {
-            $match: {
-              $expr: { $eq: ["$chatId", "$$chatId"] },
-            },
-          },
-          ...chatMessageCommonAggregation(),
-        ],
-        as: "messages",
-      },
-    },
-    {
       $addFields: {
         _id: { $toString: "$_id" },
         lastMessage: { $arrayElemAt: ["$lastMessage", 0] },
