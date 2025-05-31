@@ -1,5 +1,5 @@
-import axios from "axios";
 import ApiError from "../utils/ApiError";
+import pgClient from "../database/pgClient";
 
 export const validateUser = async (
   userIds: string[],
@@ -7,37 +7,39 @@ export const validateUser = async (
   if (!userIds.length) return [];
 
   try {
-    console.log(`Validating users: ${userIds.join(", ")}`);
+    console.log(`Validating users via direct DB query: ${userIds.join(", ")}`);
 
-    const { data } = await axios.post(
-      `${process.env.VALIDATION_URL}/api/v1/internal/validate/bulk`,
-      { userIds },
-      {
-        headers: {
-          "x-internal-api-key": process.env.INTERNAL_API_KEY,
-        },
-        timeout: 10000,
-      },
+    if (!pgClient) {
+      throw new ApiError(503, "PostgreSQL client is not available.");
+    }
+
+    const query = {
+      text: 'SELECT id, COALESCE(name, username) AS name, "avatarUrl" FROM "User" WHERE id = ANY($1::text[])',
+      values: [userIds],
+    };
+
+    const {
+      rows,
+    }: {
+      rows: Array<{ id: string; name: string; avatarUrl: string | null }>;
+    } = await pgClient.query(query);
+
+    console.log(
+      `Successfully validated ${rows.length} users via direct DB query`,
     );
-
-    if (!data.success) {
-      console.error("Validation service error:", data);
-      throw new ApiError(500, "Validation service error");
-    }
-
-    console.log(`Successfully validated ${data.users?.length || 0} users`);
-    return data.users;
+    return rows.map((user) => ({
+      id: user.id,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+    }));
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      throw new ApiError(
-        error.response?.status || 500,
-        error.response?.data?.error || "User validation failed",
-      );
+    console.error("Error during direct DB user validation:", error);
+    if (error instanceof ApiError) {
+      throw error;
     }
-    console.error("Non-axios error during validation:", error);
+    throw new ApiError(
+      500,
+      "User validation via direct DB query failed. Please try again later.",
+    );
   }
-  throw new ApiError(
-    500,
-    "User validation service is temporarily unavailable. Please try again later.",
-  );
 };
