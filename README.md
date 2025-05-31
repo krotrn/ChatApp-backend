@@ -1,6 +1,8 @@
 # Chat Backend
 
-A robust real-time chat application backend built with Node.js, Express, TypeScript, MongoDB, and Socket.IO. This service handles all chat-related operations including direct messaging, group chats, message management, and real-time communication.
+This is the backend service for the ChatApp application. It handles real-time messaging, user presence, and other core chat functionalities. It is built with Node.js, Express, and integrates with MongoDB (via Mongoose) for chat data storage and PostgreSQL for user data management.
+
+User validation, previously handled by an API call to the frontend, is now performed directly within this backend service by querying the PostgreSQL database. This change enhances security and efficiency by centralizing user data access.
 
 ## Features
 
@@ -35,22 +37,26 @@ A robust real-time chat application backend built with Node.js, Express, TypeScr
 ## Installation and Setup
 
 1. **Clone the repository**:
+
    ```bash
    git clone https://github.com/yourusername/chat-backend.git
    cd chat-backend
    ```
 
 2. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 3. **Environment Configuration**:
+
    ```bash
    cp .env.example .env
    ```
-   
+
    Edit the `.env` file with your configuration:
+
    ```
    # MongoDB Configuration
    MONGODB_URI=mongodb://localhost:27017/chat
@@ -90,6 +96,7 @@ The API is organized around REST. All requests and responses use JSON.
 ### Authentication
 
 All API requests require authentication via JWT token:
+
 ```
 Authorization: Bearer <your_jwt_token>
 ```
@@ -134,11 +141,13 @@ For detailed API documentation, see [API_DOC.md](API_DOC.md).
 The application uses Socket.IO for real-time communication:
 
 ### Connection Events
+
 - `connected`: User connects to the server
 - `disconnect`: User disconnects
 - `online`: User comes online
 
 ### Message Events
+
 - `messageReceived`: New message received
 - `messageDeleted`: Message deleted
 - `messageReaction`: Message reaction updated
@@ -147,6 +156,7 @@ The application uses Socket.IO for real-time communication:
 - `messageRead`: Messages marked as read
 
 ### Chat Events
+
 - `newChat`: New chat created
 - `chatDeleted`: Chat deleted
 - `leaveChat`: User leaves a group chat
@@ -155,6 +165,7 @@ The application uses Socket.IO for real-time communication:
 - `participantLeft`: Participant removed from group
 
 ### Typing Indicators
+
 - `typing`: User starts typing
 - `stopTyping`: User stops typing
 
@@ -163,6 +174,7 @@ The application uses Socket.IO for real-time communication:
 The project includes Docker and Docker Compose configurations for easy deployment:
 
 1. **Build and run with Docker Compose**:
+
    ```bash
    docker-compose up -d
    ```
@@ -173,6 +185,7 @@ The project includes Docker and Docker Compose configurations for easy deploymen
    ```
 
 The Docker Compose setup includes:
+
 - The Node.js application container
 - A MongoDB container with persistent storage
 - Health check configuration
@@ -208,16 +221,20 @@ chat-backend/
 The API uses standardized response types:
 
 ### Success Response
+
 ```json
 {
   "statusCode": 200,
-  "data": { /* Response data */ },
+  "data": {
+    /* Response data */
+  },
   "message": "Success message",
   "success": true
 }
 ```
 
 ### Error Response
+
 ```json
 {
   "statusCode": 404,

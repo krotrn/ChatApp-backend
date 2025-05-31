@@ -3,8 +3,11 @@ import pgClient from "../database/pgClient";
 
 export const validateUser = async (
   userIds: string[],
-): Promise<Array<{ id: string; name: string; avatarUrl: string | null }>> => {
-  if (!userIds.length) return [];
+): Promise<{ id: string; name: string; avatarUrl: string | null }[]> => {
+  if (!userIds.length) {
+    console.warn("No user IDs provided for validation.");
+    return [];
+  };
 
   try {
     console.log(`Validating users via direct DB query: ${userIds.join(", ")}`);
@@ -21,11 +24,11 @@ export const validateUser = async (
     const {
       rows,
     }: {
-      rows: Array<{ id: string; name: string; avatarUrl: string | null }>;
+      rows: { id: string; name: string; avatarUrl: string | null }[];
     } = await pgClient.query(query);
 
     console.log(
-      `Successfully validated ${rows.length} users via direct DB query`,
+      `Successfully validated ${rows.length} users`,
     );
     return rows.map((user) => ({
       id: user.id,

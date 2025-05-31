@@ -1233,3 +1233,7 @@ socket.on(ChatEventEnum.NEW_CHAT_EVENT, (chat: ChatResponseType) => {
   // Implementation
 });
 ```
+
+## User Validation
+
+User validation is handled internally by the backend service. It queries the PostgreSQL database directly to verify user credentials and status. This process does not involve any external API calls to the frontend application.
