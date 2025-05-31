@@ -257,7 +257,9 @@ export const deleteMessage = async (
   try {
     const { chatId, messageId } = req.params;
     const currentUser = req.user;
-    console.log(`Deleting message ${messageId} in chat ${chatId} by user ${currentUser?.id}`);
+    console.log(
+      `Deleting message ${messageId} in chat ${chatId} by user ${currentUser?.id}`,
+    );
     if (!currentUser) {
       res.status(400).json(new ApiError(400, "User not Found"));
       return;
@@ -273,7 +275,8 @@ export const deleteMessage = async (
       throw new ApiError(404, "Chat does not exist");
     }
 
-    const message: MessageType | null = await ChatMessage.findById(messageId).session(session);
+    const message: MessageType | null =
+      await ChatMessage.findById(messageId).session(session);
     if (!message) {
       throw new ApiError(404, "Message does not exist");
     }

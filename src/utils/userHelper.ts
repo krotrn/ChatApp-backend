@@ -2,7 +2,7 @@ import axios from "axios";
 import ApiError from "../utils/ApiError";
 
 export const validateUser = async (
-  userIds: string[]
+  userIds: string[],
 ): Promise<Array<{ id: string; name: string; avatarUrl: string | null }>> => {
   if (!userIds.length) return [];
 
@@ -17,7 +17,7 @@ export const validateUser = async (
           "x-internal-api-key": process.env.INTERNAL_API_KEY,
         },
         timeout: 10000,
-      }
+      },
     );
 
     if (!data.success) {
@@ -31,13 +31,13 @@ export const validateUser = async (
     if (axios.isAxiosError(error)) {
       throw new ApiError(
         error.response?.status || 500,
-        error.response?.data?.error || "User validation failed"
+        error.response?.data?.error || "User validation failed",
       );
     }
     console.error("Non-axios error during validation:", error);
   }
   throw new ApiError(
     500,
-    "User validation service is temporarily unavailable. Please try again later."
+    "User validation service is temporarily unavailable. Please try again later.",
   );
 };
