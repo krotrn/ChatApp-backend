@@ -30,7 +30,7 @@ const initializeSocketIO = (io: Server): void => {
         ChatEventEnum.ONLINE_EVENT,
         (
           chatId: string,
-          callback?: (response: { success: boolean; error?: string }) => void
+          callback?: (response: { success: boolean; error?: string }) => void,
         ) => {
           try {
             if (!chatId) throw new Error("Chat ID is required");
@@ -41,7 +41,7 @@ const initializeSocketIO = (io: Server): void => {
             if (callback)
               callback({ success: false, error: (error as Error).message });
           }
-        }
+        },
       );
       socket.on(ChatEventEnum.OFFLINE_EVENT, (chatId) => {
         socket.leave(chatId);
@@ -53,10 +53,9 @@ const initializeSocketIO = (io: Server): void => {
         ChatEventEnum.TYPING_EVENT,
         (
           data: { userId: string; chatId: string },
-          callback?: (response: { success: boolean; error?: string }) => void
+          callback?: (response: { success: boolean; error?: string }) => void,
         ) => {
           try {
-
             if (!data) throw new Error("Data is required");
             if (!(data.chatId && data.userId)) {
               throw new Error("Both chatId and userId are required.");
@@ -73,7 +72,7 @@ const initializeSocketIO = (io: Server): void => {
             if (callback)
               callback({ success: false, error: (error as Error).message });
           }
-        }
+        },
       );
 
       // Stop typing event
@@ -81,7 +80,7 @@ const initializeSocketIO = (io: Server): void => {
         ChatEventEnum.STOP_TYPING_EVENT,
         (
           data: { userId: string; chatId: string },
-          callback?: (response: { success: boolean; error?: string }) => void
+          callback?: (response: { success: boolean; error?: string }) => void,
         ) => {
           try {
             if (!data) throw new Error("Data is required");
@@ -98,7 +97,7 @@ const initializeSocketIO = (io: Server): void => {
             if (callback)
               callback({ success: false, error: (error as Error).message });
           }
-        }
+        },
       );
 
       // Disconnect event
@@ -116,7 +115,7 @@ const initializeSocketIO = (io: Server): void => {
       console.error("Socket connection error:", error);
       socket.emit(
         ChatEventEnum.SOCKET_ERROR_EVENT,
-        (error as Error)?.message || "An error occurred while connecting."
+        (error as Error)?.message || "An error occurred while connecting.",
       );
     }
   });
@@ -132,7 +131,7 @@ const emitSocketEvent = <T>(
   req: EmitSocketEventRequest,
   roomId: string,
   event: string,
-  payload: T
+  payload: T,
 ): void => {
   try {
     if (!roomId) {

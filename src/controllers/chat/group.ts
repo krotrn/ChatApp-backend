@@ -442,7 +442,6 @@ export const leaveGroupChat = async (
             { _id: chatId },
           );
         });
-
       } catch (error) {
         console.log(error);
         res.status(500).json(new ApiResponse(500, null, "Error deleting chat"));

@@ -10,7 +10,6 @@ export const validateUser = async (
   }
 
   try {
-
     if (!pgClient) {
       throw new ApiError(503, "PostgreSQL client is not available.");
     }
