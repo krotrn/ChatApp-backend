@@ -257,9 +257,6 @@ export const deleteMessage = async (
   try {
     const { chatId, messageId } = req.params;
     const currentUser = req.user;
-    console.log(
-      `Deleting message ${messageId} in chat ${chatId} by user ${currentUser?.id}`,
-    );
     if (!currentUser) {
       res.status(400).json(new ApiError(400, "User not Found"));
       return;

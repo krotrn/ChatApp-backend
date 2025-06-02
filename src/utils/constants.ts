@@ -25,4 +25,5 @@ export const ChatEventEnum = Object.freeze({
   PARTICIPANT_LEFT_EVENT: "participantLeft",
   MESSAGE_EDITED_EVENT: "messageEdited",
   MESSAGE_READ_EVENT: "messageRead",
+  OFFLINE_EVENT: "offline"
 });

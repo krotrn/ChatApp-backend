@@ -419,14 +419,11 @@ export const leaveGroupChat = async (
   let updatedChat;
 
   if (chat.admin === currentUser.id) {
-    // If admin is leaving, assign new admin
     const nonAdminParticipants = chat.participants.filter(
       (p: ChatParticipant) => p.userId !== currentUser.id,
     );
 
     if (nonAdminParticipants.length === 0) {
-      console.log("Deleting chat as all participants have left");
-      // Deleting chat as all participants have left
       try {
         const session = await startSession();
         session.startTransaction();
@@ -446,9 +443,6 @@ export const leaveGroupChat = async (
           );
         });
 
-        console.log(
-          "Chat deleted successfully after all participants have left",
-        );
       } catch (error) {
         console.log(error);
         res.status(500).json(new ApiResponse(500, null, "Error deleting chat"));

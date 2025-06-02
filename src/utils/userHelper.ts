@@ -10,7 +10,6 @@ export const validateUser = async (
   }
 
   try {
-    console.log(`Validating users via direct DB query: ${userIds.join(", ")}`);
 
     if (!pgClient) {
       throw new ApiError(503, "PostgreSQL client is not available.");
@@ -26,8 +25,6 @@ export const validateUser = async (
     }: {
       rows: { id: string; name: string; avatarUrl: string | null }[];
     } = await pgClient.query(query);
-
-    console.log(`Successfully validated ${rows.length} users`);
     return rows.map((user) => ({
       id: user.id,
       name: user.name,

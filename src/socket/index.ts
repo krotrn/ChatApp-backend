@@ -23,42 +23,37 @@ const initializeSocketIO = (io: Server): void => {
       const chatId = socket.handshake.query.chatId as string; // Assuming chatId is passed in query
       if (chatId) {
         socket.join(chatId);
-        console.log(
-          `User joined chat on connection. chatId: ${chatId}, userId: ${socket.user.id}`,
-        );
       }
 
       socket.emit(ChatEventEnum.CONNECTED_EVENT);
-      console.log("User connected. userId:", socket.user.id);
-
-      // Joining a chat room
       socket.on(
         ChatEventEnum.ONLINE_EVENT,
         (
           chatId: string,
-          callback?: (response: { success: boolean; error?: string }) => void,
+          callback?: (response: { success: boolean; error?: string }) => void
         ) => {
           try {
             if (!chatId) throw new Error("Chat ID is required");
             socket.join(chatId);
-            console.log(
-              `User joined the chat. chatId: ${chatId}, userId: ${socket.user?.id}`,
-            );
             if (callback) callback({ success: true });
           } catch (error) {
             console.error("Error in ONLINE_EVENT:", error);
             if (callback)
               callback({ success: false, error: (error as Error).message });
           }
-        },
+        }
       );
+      socket.on(ChatEventEnum.OFFLINE_EVENT, (chatId) => {
+        socket.leave(chatId);
+        console.log(`Socket ${socket.id} left room ${chatId}`);
+      });
 
       // Typing events
       socket.on(
         ChatEventEnum.TYPING_EVENT,
         (
           chatId: string,
-          callback?: (response: { success: boolean; error?: string }) => void,
+          callback?: (response: { success: boolean; error?: string }) => void
         ) => {
           try {
             if (!chatId) throw new Error("Chat ID is required");
@@ -69,7 +64,7 @@ const initializeSocketIO = (io: Server): void => {
             if (callback)
               callback({ success: false, error: (error as Error).message });
           }
-        },
+        }
       );
 
       // Stop typing event
@@ -77,7 +72,7 @@ const initializeSocketIO = (io: Server): void => {
         ChatEventEnum.STOP_TYPING_EVENT,
         (
           chatId: string,
-          callback?: (response: { success: boolean; error?: string }) => void,
+          callback?: (response: { success: boolean; error?: string }) => void
         ) => {
           try {
             if (!chatId) throw new Error("Chat ID is required");
@@ -88,7 +83,7 @@ const initializeSocketIO = (io: Server): void => {
             if (callback)
               callback({ success: false, error: (error as Error).message });
           }
-        },
+        }
       );
 
       // Disconnect event
@@ -106,7 +101,7 @@ const initializeSocketIO = (io: Server): void => {
       console.error("Socket connection error:", error);
       socket.emit(
         ChatEventEnum.SOCKET_ERROR_EVENT,
-        (error as Error)?.message || "An error occurred while connecting.",
+        (error as Error)?.message || "An error occurred while connecting."
       );
     }
   });
@@ -122,7 +117,7 @@ const emitSocketEvent = <T>(
   req: EmitSocketEventRequest,
   roomId: string,
   event: string,
-  payload: T,
+  payload: T
 ): void => {
   try {
     if (!roomId) {

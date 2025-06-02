@@ -357,8 +357,6 @@ export const deleteChatForMe = async (
   }
 
   if (updatedChat.deletedFor.length === chat.participants.length) {
-    console.log("Deleting chat as all participants have deleted it");
-    // Deleting chat as all participants have deleted it
     try {
       const session = await startSession();
       session.startTransaction();
@@ -378,8 +376,6 @@ export const deleteChatForMe = async (
           { _id: chatId },
         );
       });
-
-      console.log("Chat deleted successfully after all participants have left");
     } catch (error) {
       console.log(error);
       res.status(500).json(new ApiResponse(500, null, "Error deleting chat"));

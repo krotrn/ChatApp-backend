@@ -279,13 +279,6 @@ export const chatMessageCommonAggregation = () => {
             else: null,
           },
         },
-        formatting: {
-          $cond: {
-            if: { $ne: ["$formatting", null] },
-            then: "$formatting",
-            else: {},
-          },
-        },
       },
     },
   ];
@@ -294,7 +287,6 @@ export const chatMessageCommonAggregation = () => {
 
 2. **chatCommonAggregation**: This pipeline transforms `Chat` documents into the `ChatResponseType` format by:
    - Using $lookup to fetch and attach the last message
-   - Using $lookup to fetch recent messages
    - Converting MongoDB ObjectIds to strings
    - Structuring the response with embedded message data
 
@@ -314,24 +306,6 @@ const chatCommonAggregation = () => {
           ...chatMessageCommonAggregation(),
         ],
         as: "lastMessage",
-      },
-    },
-    {
-      $lookup: {
-        from: "chatmessages",
-        let: { chatId: "$_id" },
-        pipeline: [
-          {
-            $match: {
-              $expr: { $eq: ["$chatId", "$$chatId"] },
-            },
-          },
-          ...chatMessageCommonAggregation(),
-          {
-            $sort: { createdAt: -1 },
-          },
-        ],
-        as: "messages",
       },
     },
     {
