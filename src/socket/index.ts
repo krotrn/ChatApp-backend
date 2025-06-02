@@ -18,8 +18,8 @@ const initializeSocketIO = (io: Server): void => {
         return socket.disconnect(true);
       }
 
-      // Join user's own ID room and the chat room immediately if chatId is available
       socket.join(socket.user.id);
+
       const chatId = socket.handshake.query.chatId as string; // Assuming chatId is passed in query
       if (chatId) {
         socket.join(chatId);
@@ -52,12 +52,21 @@ const initializeSocketIO = (io: Server): void => {
       socket.on(
         ChatEventEnum.TYPING_EVENT,
         (
-          chatId: string,
+          data: { userId: string; chatId: string },
           callback?: (response: { success: boolean; error?: string }) => void
         ) => {
           try {
-            if (!chatId) throw new Error("Chat ID is required");
-            socket.to(chatId).emit(ChatEventEnum.TYPING_EVENT, chatId);
+
+            if (!data) throw new Error("Data is required");
+            if (!(data.chatId && data.userId)) {
+              throw new Error("Both chatId and userId are required.");
+            }
+            if (data.userId !== socket.user?.id) {
+              throw new Error("User ID mismatch");
+            }
+
+            socket.to(data.chatId).emit(ChatEventEnum.TYPING_EVENT, data);
+
             if (callback) callback({ success: true });
           } catch (error) {
             console.error("Error in TYPING_EVENT:", error);
@@ -71,12 +80,18 @@ const initializeSocketIO = (io: Server): void => {
       socket.on(
         ChatEventEnum.STOP_TYPING_EVENT,
         (
-          chatId: string,
+          data: { userId: string; chatId: string },
           callback?: (response: { success: boolean; error?: string }) => void
         ) => {
           try {
-            if (!chatId) throw new Error("Chat ID is required");
-            socket.to(chatId).emit(ChatEventEnum.STOP_TYPING_EVENT, chatId);
+            if (!data) throw new Error("Data is required");
+            if (!(data.chatId && data.userId)) {
+              throw new Error("Both chatId and userId are required.");
+            }
+            if (data.userId !== socket.user?.id) {
+              throw new Error("User ID mismatch");
+            }
+            socket.to(data.chatId).emit(ChatEventEnum.STOP_TYPING_EVENT, data);
             if (callback) callback({ success: true });
           } catch (error) {
             console.error("Error in STOP_TYPING_EVENT:", error);
