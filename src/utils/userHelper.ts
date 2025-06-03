@@ -1,8 +1,9 @@
 import ApiError from "../utils/ApiError";
 import pgClient from "../database/pgClient";
+import { Chat } from "../models/chat.models";
 
 export const validateUser = async (
-  userIds: string[],
+  userIds: string[]
 ): Promise<{ id: string; name: string; avatarUrl: string | null }[]> => {
   if (!userIds.length) {
     console.warn("No user IDs provided for validation.");
@@ -36,7 +37,35 @@ export const validateUser = async (
     }
     throw new ApiError(
       500,
-      "User validation via direct DB query failed. Please try again later.",
+      "User validation via direct DB query failed. Please try again later."
     );
+  }
+};
+
+export const validateChatParticipant = async (
+  chatId: string,
+  userId: string
+): Promise<boolean> => {
+  try {
+    if (!chatId || !userId) {
+      console.warn("ChatId or UserId not provided for chat validation.");
+      return false;
+    }
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+      console.warn(`Chat with ID ${chatId} not found.`);
+      return false;
+    }
+
+    // Check if user is a participant in the chat
+    const isParticipant = chat.participants.some(
+      (participant: { userId: string }) => participant.userId === userId
+    );
+
+    return isParticipant;
+  } catch (error) {
+    console.error("Error during chat participant validation:", error);
+    return false;
   }
 };
