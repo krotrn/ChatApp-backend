@@ -39,24 +39,24 @@ const initializeSocketIO = (io: Server) => {
 
       socket.on(
         ChatEventEnum.TYPING_EVENT,
-        (data: { userId: string; chatId: string; }) => {
+        (data: { userId: string; chatId: string }) => {
           console.log(`User ${userId} is typing in chat ${data.chatId}`);
           socket.to(data.chatId).emit(ChatEventEnum.TYPING_EVENT, {
             userId,
             chatId: data.chatId,
           });
-        }
+        },
       );
 
       socket.on(
         ChatEventEnum.STOP_TYPING_EVENT,
-        (data: { userId: string; chatId: string; }) => {
+        (data: { userId: string; chatId: string }) => {
           console.log(`User ${userId} stopped typing in chat ${data.chatId}`);
           socket.to(data.chatId).emit(ChatEventEnum.STOP_TYPING_EVENT, {
             userId,
             chatId: data.chatId,
           });
-        }
+        },
       );
 
       socket.on("disconnect", () => {
@@ -69,7 +69,7 @@ const initializeSocketIO = (io: Server) => {
       console.error("Socket connection error:", error);
       socket.emit(
         ChatEventEnum.SOCKET_ERROR_EVENT,
-        (error as Error)?.message || "An error occurred during connection."
+        (error as Error)?.message || "An error occurred during connection.",
       );
     }
   });
@@ -84,7 +84,7 @@ const emitSocketEvent = <T>(
   req: EmitSocketEventRequest,
   roomId: string,
   event: string,
-  payload: T
+  payload: T,
 ): void => {
   try {
     if (!roomId) {

@@ -1,10 +1,10 @@
 import { Router } from "express";
 
-import webhook from "../controllers/webhook";
 import { authenticate } from "../middleware/auth";
+import { deleteUserWebhook, updateUserWebhook } from "../controllers/webhook";
 
 const router = Router();
-
-router.post("/user", authenticate, webhook);
+router.put("/user", authenticate, updateUserWebhook);
+router.delete("/user", authenticate, deleteUserWebhook);
 
 export default router;
