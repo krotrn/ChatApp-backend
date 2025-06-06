@@ -4,8 +4,6 @@ import {
   messageRateLimiter,
   fileUploadRateLimiter,
 } from "../middleware/rateLimit";
-import { upload } from "../middleware/multer";
-import { handleUploadErrors } from "../middleware/handleUploadErrors";
 import {
   deleteMessage,
   deleteMessageForMe,
@@ -24,9 +22,7 @@ router
   .post(
     messageRateLimiter,
     fileUploadRateLimiter,
-    upload.array("attachments", 5),
     authenticate,
-    handleUploadErrors,
     sendMessage,
   );
 
