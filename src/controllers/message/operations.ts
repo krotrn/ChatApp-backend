@@ -16,8 +16,6 @@ import type {
 } from "../../types/chat";
 import ApiError from "../../utils/ApiError";
 import { ApiResponse } from "../../utils/ApiResponse";
-import { getLocalPath, removeLocalFile } from "../../utils/fileOperations";
-import { getStaticFilePath } from "../../utils/fileOperations";
 import { validateUser } from "../../utils/userHelper";
 import { validateMessageInput } from "../../utils/validators";
 import type { Request, Response } from "express";
@@ -118,21 +116,17 @@ export const sendMessage = async (
 
   try {
     const { chatId } = req.params;
-    const { content, replyToId }: { content: string; replyToId?: string } =
+    const {
+      content,
+      replyToId,
+      attachments,
+    }: { content: string; replyToId?: string; attachments?: AttachmentType[] } =
       req.body;
     const currentUser = req.user;
     if (!currentUser) {
       res.status(400).json(new ApiError(400, "User not Found"));
       return;
     }
-
-    let attachments: Express.Multer.File[] = [];
-    if (!Array.isArray(req.files) && req.files?.attachments) {
-      attachments = req.files.attachments;
-    } else if (Array.isArray(req.files)) {
-      attachments = req.files;
-    }
-
     validateMessageInput(content, attachments);
 
     const selectedChat: ChatType | null = await Chat.findById(chatId);
@@ -157,15 +151,6 @@ export const sendMessage = async (
       throw new ApiError(400, "One or more receivers are invalid");
     }
 
-    const messageFiles: AttachmentType[] = attachments.map((attachment) => ({
-      name: attachment.filename,
-      url: getStaticFilePath(req, attachment.filename),
-      localPath: getLocalPath(attachment.filename),
-      type: attachment.mimetype || "application/octet-stream",
-      status: StatusEnum.SENT,
-      deletedFor: [],
-    }));
-
     const sender: User = {
       userId: currentUser.id,
       name: currentUser.name,
@@ -177,8 +162,8 @@ export const sendMessage = async (
       sender,
       receivers,
       chatId: new Types.ObjectId(chatId),
-      content: content,
-      attachments: messageFiles,
+      content: content.trim(),
+      attachments,
       status: StatusEnum.SENT,
       edited: { isEdited: false, editedAt: currentDate },
       replyToId: replyToId ? new Types.ObjectId(replyToId) : undefined,
@@ -289,13 +274,6 @@ export const deleteMessage = async (
     }
 
     const isLastMessage = chat.lastMessage?.toString() === messageId;
-
-    // Delete physical files if any
-    if (message.attachments && message.attachments.length > 0) {
-      for (const file of message.attachments) {
-        await removeLocalFile(file.localPath);
-      }
-    }
 
     await ChatMessage.findByIdAndDelete(messageId).session(session);
 

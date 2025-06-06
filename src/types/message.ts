@@ -4,9 +4,9 @@ import { DeletedForEntry } from "./chat";
 export interface AttachmentType {
   name: string;
   url: string;
-  localPath: string;
-  status: StatusEnum;
+  size: string;
   type: string;
+  public_id: string;
   deletedFor: DeletedForEntry[];
 }
 

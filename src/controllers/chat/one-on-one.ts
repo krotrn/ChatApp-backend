@@ -6,7 +6,6 @@ import { emitSocketEvent } from "../../socket";
 import ApiError from "../../utils/ApiError";
 import { ApiResponse } from "../../utils/ApiResponse";
 import { ChatEventEnum } from "../../utils/constants";
-import { removeLocalFile } from "../../utils/fileOperations";
 import { validateUser } from "../../utils/userHelper";
 import { chatCommonAggregation } from "./aggregations";
 import type {
@@ -26,25 +25,6 @@ export const deleteCascadeChatMessages = async (
 ): Promise<void> => {
   try {
     if (forEveryone) {
-      const messages: MessageType[] = await ChatMessage.find({
-        chatId,
-      }).session(session);
-      for (const message of messages) {
-        if (message.attachments?.length) {
-          await Promise.all(
-            message.attachments.map(async (attachment) => {
-              try {
-                await removeLocalFile(attachment.localPath);
-              } catch (error) {
-                console.error(
-                  `Failed to delete file: ${attachment.localPath}`,
-                  error,
-                );
-              }
-            }),
-          );
-        }
-      }
       await ChatMessage.deleteMany({ chatId }, { session });
     } else {
       if (!userId) {
@@ -66,23 +46,6 @@ export const deleteCascadeChatMessages = async (
         chatId,
         "deletedFor.userId": { $all: participantUserIds },
       }).session(session);
-
-      for (const message of messagesToDelete) {
-        if (message.attachments?.length) {
-          await Promise.all(
-            message.attachments.map(async (attachment) => {
-              try {
-                await removeLocalFile(attachment.localPath);
-              } catch (error) {
-                console.error(
-                  `Failed to delete file: ${attachment.localPath}`,
-                  error,
-                );
-              }
-            }),
-          );
-        }
-      }
       const messageIdsToDelete = messagesToDelete.map((m) => m._id);
       await ChatMessage.deleteMany(
         { _id: { $in: messageIdsToDelete } },

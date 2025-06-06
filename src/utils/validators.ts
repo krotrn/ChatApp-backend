@@ -1,5 +1,6 @@
 import ApiError from "./ApiError";
 import type { ChatParticipant } from "../types/chat";
+import { AttachmentType } from "src/types/message";
 export const validateMessageContent = (content: string): boolean => {
   if (!content || typeof content !== "string") {
     return false;
@@ -22,25 +23,9 @@ export const validateParticipantCount = (
   return participants.length >= 2 && participants.length <= 100;
 };
 
-export const validateFileSize = (file: Express.Multer.File): boolean => {
-  const maxSize = 5 * 1024 * 1024;
-  return file.size <= maxSize;
-};
-
-export const validateFileType = (file: Express.Multer.File): boolean => {
-  const allowedTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "application/pdf",
-    "text/plain",
-  ];
-  return allowedTypes.includes(file.mimetype);
-};
-
 export const validateMessageInput = (
   content: string,
-  files?: Express.Multer.File[],
+  files?: AttachmentType[],
 ): void => {
   if (!content && (!files || files.length === 0)) {
     throw new ApiError(400, "Message content or attachment is required");
@@ -51,16 +36,5 @@ export const validateMessageInput = (
       400,
       "Message content must be between 1 and 1000 characters",
     );
-  }
-
-  if (files) {
-    for (const file of files) {
-      if (!validateFileSize(file)) {
-        throw new ApiError(400, "File size must be less than 5MB");
-      }
-      if (!validateFileType(file)) {
-        throw new ApiError(400, "Invalid file type");
-      }
-    }
   }
 };

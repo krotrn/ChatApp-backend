@@ -21,15 +21,6 @@ export const authenticate = (
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
-
-    const now = Math.floor(Date.now() / 1000);
-    if (decoded.exp < now) {
-      throw new jwt.TokenExpiredError(
-        "Token expired",
-        new Date(decoded.exp * 1000),
-      );
-    }
-
     req.user = decoded;
     next();
   } catch (error) {
