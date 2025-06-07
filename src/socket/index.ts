@@ -20,11 +20,23 @@ const initializeSocketIO = (io: Server) => {
       const userId = socket.user.id;
       socket.join(userId);
       console.log(`User ${userId} connected and joined room ${userId}`);
+      const currentOnlineUsers = Array.from(onlineUsers.keys());
+      socket.emit(ChatEventEnum.ONLINE_USERS_LIST_EVENT, {
+        onlineUsers: currentOnlineUsers,
+      });
+      console.log(`Sent online users list to ${userId}:`, currentOnlineUsers);
 
       socket.on(ChatEventEnum.USER_ONLINE_EVENT, async () => {
         onlineUsers.set(userId, socket.id);
         console.log(`User ${userId} is online.`);
         socket.broadcast.emit(ChatEventEnum.USER_IS_ONLINE_EVENT, { userId });
+      });
+
+      socket.on("ping", (data: { timestamp: number }, callback) => {
+        console.log(`Health check ping from user ${userId}`);
+        if (callback && typeof callback === "function") {
+          callback({ timestamp: Date.now(), serverTime: Date.now() });
+        }
       });
 
       socket.on(ChatEventEnum.JOIN_CHAT_EVENT, async (chatId: string) => {

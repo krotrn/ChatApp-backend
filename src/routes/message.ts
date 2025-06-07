@@ -19,12 +19,7 @@ const router = Router();
 router
   .route("/:chatId")
   .get(messageRateLimiter, authenticate, getAllMessages)
-  .post(
-    messageRateLimiter,
-    fileUploadRateLimiter,
-    authenticate,
-    sendMessage,
-  );
+  .post(messageRateLimiter, fileUploadRateLimiter, authenticate, sendMessage);
 
 router
   .route("/:chatId/:messageId")

@@ -25,8 +25,8 @@ const allowedOrigins =
 console.log("Allowed Origins:", allowedOrigins);
 
 const io = new Server(httpServer, {
-  pingTimeout: 60000,
-  pingInterval: 25000,
+  pingTimeout: 30000,
+  pingInterval: 10000,
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -35,6 +35,7 @@ const io = new Server(httpServer, {
   },
   connectTimeout: 10000,
   transports: ["websocket", "polling"],
+  allowEIO3: true,
 });
 
 app.set("io", io);
