@@ -3,7 +3,7 @@ import authSocket from "../middleware/authSocket";
 import type { CustomSocket } from "../types/Socket";
 import { ChatEventEnum } from "../utils/constants";
 
-const onlineUsers = new Map<string, string>();
+const onlineUserIds = new Map<string, string>();
 const initializeSocketIO = (io: Server) => {
   io.use(authSocket);
 
@@ -20,20 +20,20 @@ const initializeSocketIO = (io: Server) => {
       const userId = socket.user.id;
       socket.join(userId);
       console.log(`User ${userId} connected and joined room ${userId}`);
-      const currentOnlineUsers = Array.from(onlineUsers.keys());
+      const currentOnlineUserIds = Array.from(onlineUserIds.keys());
       socket.emit(ChatEventEnum.ONLINE_USERS_LIST_EVENT, {
-        onlineUsers: currentOnlineUsers,
+        onlineUserIds: currentOnlineUserIds,
       });
-      console.log(`Sent online users list to ${userId}:`, currentOnlineUsers);
+      console.log(`Sent online users list to ${userId}:`, currentOnlineUserIds);
 
       socket.on(ChatEventEnum.USER_ONLINE_EVENT, async () => {
-        onlineUsers.set(userId, socket.id);
+        onlineUserIds.set(userId, socket.id);
         console.log(`User ${userId} is online.`);
         socket.broadcast.emit(ChatEventEnum.USER_IS_ONLINE_EVENT, { userId });
       });
 
       socket.on("ping", (data: { timestamp: number }, callback) => {
-        console.log(`Health check ping from user ${userId}`);
+        console.log(`Health check ping from user ${userId} on socket ${socket.id} at ${data.timestamp}`);
         if (callback && typeof callback === "function") {
           callback({ timestamp: Date.now(), serverTime: Date.now() });
         }
@@ -57,7 +57,7 @@ const initializeSocketIO = (io: Server) => {
             userId,
             chatId: data.chatId,
           });
-        },
+        }
       );
 
       socket.on(
@@ -68,11 +68,11 @@ const initializeSocketIO = (io: Server) => {
             userId,
             chatId: data.chatId,
           });
-        },
+        }
       );
 
       socket.on("disconnect", () => {
-        onlineUsers.delete(userId);
+        onlineUserIds.delete(userId);
         console.log(`User ${userId} disconnected.`);
         socket.leave(userId);
         socket.broadcast.emit(ChatEventEnum.USER_IS_OFFLINE_EVENT, { userId });
@@ -81,7 +81,7 @@ const initializeSocketIO = (io: Server) => {
       console.error("Socket connection error:", error);
       socket.emit(
         ChatEventEnum.SOCKET_ERROR_EVENT,
-        (error as Error)?.message || "An error occurred during connection.",
+        (error as Error)?.message || "An error occurred during connection."
       );
     }
   });
@@ -96,7 +96,7 @@ const emitSocketEvent = <T>(
   req: EmitSocketEventRequest,
   roomId: string,
   event: string,
-  payload: T,
+  payload: T
 ): void => {
   try {
     if (!roomId) {
