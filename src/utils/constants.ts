@@ -1,8 +1,3 @@
-export const UserRolesEnum = Object.freeze({
-  ADMIN: "ADMIN",
-  USER: "USER",
-});
-
 export const ChatEventEnum = Object.freeze({
   // Connection & Global Presence
   CONNECTED_EVENT: "connected", // Emitted by server to client on successful connection

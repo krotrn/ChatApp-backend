@@ -1,241 +1,722 @@
-# Chat Service API Documentation
+# Chat Backend API Documentation
 
 ## Table of Contents
 
-- [Base URL](#base-url)
-- [Authentication](#authentication)
-- [WebSocket Events](#websocket-events)
-  - [Connection Events](#connection-events)
-  - [Message Events](#message-events)
-  - [Chat Events](#chat-events)
-  - [Typing Indicators](#typing-indicators)
-  - [Error Handling](#error-handling)
-- [Response Types](#response-types)
-  - [MessageResponseType](#messageresponsetype)
-  - [ChatResponseType](#chatresponsetype)
-- [Data Transformation Logic](#data-transformation-logic)
-  - [MongoDB Aggregation Pipelines](#mongodb-aggregation-pipelines)
-  - [Type Conversion](#type-conversion)
-  - [Field Projection](#field-projection)
-- [Business Logic](#business-logic)
-  - [Message Status Flow](#message-status-flow)
-  - [Chat Participant Management](#chat-participant-management)
-  - [Error Resilience](#error-resilience)
-- [Endpoints](#endpoints)
-  - [Chat Management](#chat-management)
-    - [Get All Chats](#get-all-chats)
-    - [Create or Get One-on-One Chat](#create-or-get-one-on-one-chat)
-    - [Get Chat by ID](#get-chat-by-id)
-    - [Delete One-on-One Chat](#delete-one-on-one-chat)
-    - [Delete Chat For Me](#delete-chat-for-me)
-  - [Group Chat Management](#group-chat-management)
-    - [Create Group Chat](#create-group-chat)
-    - [Get Group Chat Details](#get-group-chat-details)
-    - [Rename Group Chat](#rename-group-chat)
-    - [Delete Group Chat](#delete-group-chat)
-    - [Add Participant to Group](#add-participant-to-group)
-    - [Remove Participant from Group](#remove-participant-from-group)
-    - [Leave Group Chat](#leave-group-chat)
-  - [Message Management](#message-management)
-    - [Get All Messages](#get-all-messages)
-    - [Send Message](#send-message)
-    - [Delete Message](#delete-message)
-    - [Reply to Message](#reply-to-message)
-    - [Update Message Reaction](#update-message-reaction)
-    - [Edit Message](#edit-message)
-    - [Mark Messages as Read](#mark-messages-as-read)
-  - [Message Pin Management](#message-pin-management)
-    - [Pin Message](#pin-message)
-    - [Unpin Message](#unpin-message)
-  - [User Update Webhook](#user-update-webhook)
-    - [User Update Webhook](#user-update-webhook-1)
-- [Error Responses](#error-responses)
-  - [400 Bad Request](#400-bad-request)
-  - [401 Unauthorized](#401-unauthorized)
-  - [403 Forbidden](#403-forbidden)
-  - [404 Not Found](#404-not-found)
-  - [500 Internal Server Error](#500-internal-server-error)
-
-## Base URL
-
-```
-http://localhost:3000
-```
+1. [Authentication](#authentication)
+2. [Chat Endpoints](#chat-endpoints)
+   - [Get All Chats](#1-get-all-chats)
+   - [Create or Get One-on-One Chat](#2-create-or-get-one-on-one-chat)
+   - [Get Chat by ID](#3-get-chat-by-id)
+   - [Delete One-on-One Chat](#4-delete-one-on-one-chat)
+   - [Delete Chat for Me](#5-delete-chat-for-me)
+   - [Create Group Chat](#6-create-group-chat)
+   - [Get Group Chat Details](#7-get-group-chat-details)
+   - [Update Group Chat](#8-update-group-chat)
+   - [Delete Group Chat](#9-delete-group-chat)
+   - [Add Participant to Group Chat](#10-add-participant-to-group-chat)
+   - [Remove Participant from Group Chat](#11-remove-participant-from-group-chat)
+   - [Leave Group Chat](#12-leave-group-chat)
+   - [Pin Message](#13-pin-message)
+   - [Unpin Message](#14-unpin-message)
+3. [Message Endpoints](#message-endpoints)
+   - [Get All Messages](#1-get-all-messages)
+   - [Send Message](#2-send-message)
+   - [Delete Message](#3-delete-message)
+   - [Delete Message for Me](#4-delete-message-for-me)
+   - [Edit Message](#5-edit-message)
+   - [Mark Messages as Read](#6-mark-messages-as-read)
+   - [Update Message Reaction](#7-update-message-reaction)
+4. [Webhook Endpoints](#webhook-endpoints)
+5. [WebSocket Events](#websocket-events)
+6. [Response Types](#response-types)
+7. [Error Handling](#error-handling)
+8. [Rate Limiting](#rate-limiting)
+9. [Health Check](#health-check)
+10. [Additional Notes](#additional-notes)
 
 ## Authentication
 
-All API requests must include a valid JWT token in the Authorization header. The token is obtained during the login process and must be included in all subsequent requests.
+### Token-based Authentication
 
-### Token Format
+The API uses JSON Web Tokens (JWT) for authentication. Include the token in the Authorization header:
 
 ```
-Authorization: Bearer <token>
+Authorization: Bearer <your-jwt-token>
 ```
 
-### Token Structure
+All endpoints require authentication unless stated otherwise.
 
-The JWT token contains the following claims:
+## Chat Endpoints
+
+### 1. Get All Chats
+
+- **GET** `/api/v1/chats`
+- **Description**: Get all chats for the authenticated user with pagination
+- **Authentication**: Required
+- **Parameters**:
+  - `limit` (query, optional): Number of chats to retrieve (default: 10, max: 100)
+  - `page` (query, optional): Page number for pagination (default: 1)
+
+**Response**:
 
 ```json
 {
-  "id": "user_id",
-  "name": "user_name",
-  "avatarUrl": "avatar_url",
-  "email": "user_email",
-  "username": "username",
-  "role": "user_role",
-  "exp": 1234567890, // Expiration time in seconds since epoch
-  "iat": 1234567890 // Issued at time in seconds since epoch
+  "status": "success",
+  "data": [
+    {
+      "_id": "string",
+      "name": "string",
+      "type": "direct" | "group" | "channel",
+      "participants": [
+        {
+          "userId": "string",
+          "name": "string",
+          "avatarUrl": "string",
+          "role": "member" | "admin",
+          "joinedAt": "date"
+        }
+      ],
+      "admin": "string",
+      "createdBy": "string",
+      "avatarUrl": "string",
+      "lastMessage": {
+        "_id": "string",
+        "content": "string",
+        "sender": { "userId": "string", "name": "string", "avatarUrl": "string" },
+        "createdAt": "date"
+      } | null,
+      "metadata": {
+        "pinnedMessage": ["messageId1", "messageId2"],
+        "customePermissions": {}
+      },
+      "messages": [],
+      "createdAt": "date",
+      "updatedAt": "date"
+    }
+  ]
 }
 ```
 
-### Token Expiration
+### 2. Create or Get One-on-One Chat
 
-- Tokens are valid for 1 hour from the time of issuance
-- Expired tokens will result in a 401 Unauthorized response
-- The client should handle token expiration by redirecting to the login page
+- **POST** `/api/v1/chats`
+- **Description**: Create a new one-on-one chat or get existing one
+- **Authentication**: Required
+- **Rate Limit**: Chat creation rate limiter applied
 
-### Error Responses
-
-#### 401 Unauthorized
+**Request Body**:
 
 ```json
 {
-  "statusCode": 401,
-  "data": null,
-  "message": "Invalid token" | "Token expired" | "Authentication required",
+  "participantId": "string"
+}
+```
+
+### 3. Get Chat by ID
+
+- **GET** `/api/v1/chats/chat/:chatId`
+- **Description**: Get a specific chat by its ID
+- **Authentication**: Required
+- **Parameters**:
+  - `chatId` (path): The chat ID
+
+### 4. Delete One-on-One Chat
+
+- **DELETE** `/api/v1/chats/chat/:chatId`
+- **Description**: Delete a one-on-one chat completely
+- **Authentication**: Required
+- **Parameters**:
+  - `chatId` (path): The chat ID
+
+### 5. Delete Chat for Me
+
+- **DELETE** `/api/v1/chats/:chatId/me`
+- **Description**: Delete chat for the current user only (soft delete)
+- **Authentication**: Required
+- **Parameters**:
+  - `chatId` (path): The chat ID
+
+### 6. Create Group Chat
+
+- **POST** `/api/v1/chats/group`
+- **Description**: Create a new group chat
+- **Authentication**: Required
+- **Rate Limit**: Chat creation rate limiter applied
+
+**Request Body**:
+
+```json
+{
+  "name": "string",
+  "participants": ["userId1", "userId2"],
+  "avatarUrl": "string" (optional)
+}
+```
+
+### 7. Get Group Chat Details
+
+- **GET** `/api/v1/chats/group/:chatId`
+- **Description**: Get detailed information about a group chat
+- **Authentication**: Required
+- **Parameters**:
+  - `chatId` (path): The group chat ID
+
+### 8. Update Group Chat
+
+- **PATCH** `/api/v1/chats/group/:chatId`
+- **Description**: Update group chat details (name, avatar)
+- **Authentication**: Required
+- **Rate Limit**: Chat creation rate limiter applied
+- **Parameters**:
+  - `chatId` (path): The group chat ID
+
+**Request Body**:
+
+```json
+{
+  "name": "string" (optional),
+  "avatarUrl": "string" (optional)
+}
+```
+
+### 9. Delete Group Chat
+
+- **DELETE** `/api/v1/chats/group/:chatId`
+- **Description**: Delete a group chat (admin only)
+- **Authentication**: Required
+- **Parameters**:
+  - `chatId` (path): The group chat ID
+
+### 10. Add Participant to Group Chat
+
+- **POST** `/api/v1/chats/group/:chatId/participants`
+- **Description**: Add a new participant to a group chat
+- **Authentication**: Required
+- **Rate Limit**: Chat creation rate limiter applied
+- **Parameters**:
+  - `chatId` (path): The group chat ID
+
+**Request Body**:
+
+```json
+{
+  "userId": "string"
+}
+```
+
+### 11. Remove Participant from Group Chat
+
+- **DELETE** `/api/v1/chats/group/:chatId/participants/:userId`
+- **Description**: Remove a participant from a group chat (admin only)
+- **Authentication**: Required
+- **Parameters**:
+  - `chatId` (path): The group chat ID
+  - `userId` (path): The user ID to remove
+
+### 12. Leave Group Chat
+
+- **DELETE** `/api/v1/chats/group/:chatId/leave`
+- **Description**: Leave a group chat (self-removal)
+- **Authentication**: Required
+- **Parameters**:
+  - `chatId` (path): The group chat ID
+
+### 13. Pin Message
+
+- **POST** `/api/v1/chats/:chatId/pin/:messageId`
+- **Description**: Pin a message in a chat
+- **Authentication**: Required
+- **Parameters**:
+  - `chatId` (path): The chat ID
+  - `messageId` (path): The message ID to pin
+
+### 14. Unpin Message
+
+- **DELETE** `/api/v1/chats/:chatId/pin/:messageId`
+- **Description**: Unpin a message in a chat
+- **Authentication**: Required
+- **Parameters**:
+  - `chatId` (path): The chat ID
+  - `messageId` (path): The message ID to unpin
+
+## Message Endpoints
+
+### 1. Get All Messages
+
+- **GET** `/api/v1/messages/:chatId`
+- **Description**: Get all messages in a chat with pagination
+- **Authentication**: Required
+- **Rate Limit**: Message rate limiter applied
+- **Parameters**:
+  - `chatId` (path): The chat ID
+  - `limit` (query, optional): Number of messages to retrieve
+  - `page` (query, optional): Page number for pagination
+
+**Response**:
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "_id": "string",
+      "sender": {
+        "userId": "string",
+        "name": "string",
+        "avatarUrl": "string"
+      },
+      "receivers": [
+        {
+          "userId": "string",
+          "name": "string",
+          "avatarUrl": "string"
+        }
+      ],
+      "chatId": "string",
+      "content": "string",
+      "attachments": [
+        {
+          "name": "string",
+          "url": "string",
+          "size": "string",
+          "type": "string",
+          "public_id": "string",
+          "deletedFor": []
+        }
+      ],
+      "status": 0 | 1 | 2 | 3,
+      "reactions": [
+        {
+          "userId": "string",
+          "emoji": "string",
+          "timestamp": "date"
+        }
+      ],
+      "isPinned": boolean,
+      "edited": {
+        "isEdited": boolean,
+        "editedAt": "date"
+      },
+      "edits": [
+        {
+          "content": "string",
+          "editedAt": "date",
+          "editedBy": "string"
+        }
+      ],
+      "readBy": [
+        {
+          "userId": "string",
+          "readAt": "date"
+        }
+      ],
+      "deletedFor": [],
+      "replyToId": "string" | null,
+      "formatting": {},
+      "createdAt": "date",
+      "updatedAt": "date"
+    }
+  ]
+}
+```
+
+### 2. Send Message
+
+- **POST** `/api/v1/messages/:chatId`
+- **Description**: Send a new message to a chat
+- **Authentication**: Required
+- **Rate Limit**: Message rate limiter and file upload rate limiter applied
+- **Parameters**:
+  - `chatId` (path): The chat ID
+
+**Request Body**:
+
+```json
+{
+  "content": "string",
+  "attachments": [] (optional),
+  "replyToId": "string" (optional),
+  "formatting": {} (optional)
+}
+```
+
+### 3. Delete Message
+
+- **DELETE** `/api/v1/messages/:chatId/:messageId`
+- **Description**: Delete a message for everyone (sender only)
+- **Authentication**: Required
+- **Rate Limit**: Message rate limiter applied
+- **Parameters**:
+  - `chatId` (path): The chat ID
+  - `messageId` (path): The message ID
+
+### 4. Delete Message for Me
+
+- **DELETE** `/api/v1/messages/:chatId/:messageId/me`
+- **Description**: Delete a message for the current user only
+- **Authentication**: Required
+- **Rate Limit**: Message rate limiter applied
+- **Parameters**:
+  - `chatId` (path): The chat ID
+  - `messageId` (path): The message ID
+
+### 5. Edit Message
+
+- **PATCH** `/api/v1/messages/:chatId/:messageId/edit`
+- **Description**: Edit an existing message (sender only)
+- **Authentication**: Required
+- **Rate Limit**: Message rate limiter applied
+- **Parameters**:
+  - `chatId` (path): The chat ID
+  - `messageId` (path): The message ID
+
+**Request Body**:
+
+```json
+{
+  "content": "string",
+  "replyToId": "string" (optional)
+}
+```
+
+### 6. Mark Messages as Read
+
+- **POST** `/api/v1/messages/:chatId/read`
+- **Description**: Mark messages in a chat as read
+- **Authentication**: Required
+- **Rate Limit**: Message rate limiter applied
+- **Parameters**:
+  - `chatId` (path): The chat ID
+
+**Request Body**:
+
+```json
+{
+  "messageIds": ["messageId1", "messageId2"] (optional)
+}
+```
+
+### 7. Update Message Reaction
+
+- **PATCH** `/api/v1/messages/:chatId/:messageId/reaction`
+- **Description**: Add or remove a reaction to/from a message (toggles existing reactions)
+- **Authentication**: Required
+- **Rate Limit**: Message rate limiter applied
+- **Parameters**:
+  - `chatId` (path): The chat ID
+  - `messageId` (path): The message ID
+
+**Request Body**:
+
+```json
+{
+  "emoji": "string"
+}
+```
+
+**Note**: The API automatically toggles reactions - if the user has already reacted with the same emoji, it removes the reaction; otherwise, it adds the reaction.
+
+## Webhook Endpoints
+
+### 1. User Update Webhook
+
+- **POST** `/api/v1/webhook/user`
+- **Description**: Handle user updates from external systems (used for synchronizing user data)
+- **Authentication**: Required
+
+**Request Body**:
+
+```json
+{
+  "userId": "string",
+  "action": "update" | "delete",
+  "data": {
+    "name": "string" (optional),
+    "avatarUrl": "string" (optional)
+  }
+}
+```
+
+**Response**:
+
+```json
+{
+  "statusCode": 200,
+  "message": "User update processed",
+  "success": true
+}
+```
+
+### 2. Update User Webhook Settings
+
+- **PUT** `/api/v1/webhook/user`
+- **Description**: Update webhook settings for the user
+- **Authentication**: Required
+
+**Request Body**:
+
+```json
+{
+  "webhookUrl": "string",
+  "events": ["messageReceived", "chatCreated"],
+  "isActive": boolean
+}
+```
+
+### 3. Delete User Webhook Settings
+
+- **DELETE** `/api/v1/webhook/user`
+- **Description**: Delete webhook settings for the user
+- **Authentication**: Required
+
+## WebSocket Events
+
+The API supports real-time communication through WebSocket connections using Socket.IO with authentication middleware.
+
+### Connection Configuration
+
+- **Ping Timeout**: 30 seconds
+- **Ping Interval**: 10 seconds
+- **Authentication**: Required for all socket connections
+
+### Connection Events
+
+- `connected` - Emitted by server to client on successful connection
+- `disconnect` - Standard socket.io disconnect event
+- `socketError` - Emitted by server on socket-related errors
+
+### Online Status Events
+
+- `userOnline` - Emitted by client when it comes online
+- `userOffline` - Emitted by client when it goes offline explicitly
+- `userIsOnline` - Emitted by server to notify clients that a user is online
+- `userIsOffline` - Emitted by server to notify clients that a user is offline
+- `onlineUserIdsList` - Emitted by server to send complete list of online users
+
+### Chat Room Events
+
+- `joinChat` - Client requests to join a specific chat room
+- `leaveChat` - Client requests to leave a specific chat room
+- `newParticipantAdded` - Broadcast when a participant is added to a chat
+- `participantLeft` - Broadcast when a participant leaves a chat
+
+### Messaging & Interaction Events
+
+- `messageReceived` - New message received in a chat
+- `typing` - User is typing in a chat
+- `stopTyping` - User stopped typing in a chat
+- `messageDeleted` - Message was deleted
+- `messagePinned` - Message was pinned
+- `messageUnpinned` - Message was unpinned
+- `messageReaction` - Message reaction added/removed
+- `messageEdited` - Message was edited
+- `messageRead` - Message read receipt (if implemented)
+
+### Chat Meta Events
+
+- `newChat` - A new chat is created
+- `chatDeleted` - A chat is deleted
+- `chatUpdated` - Chat details (e.g., name, image) updated
+- `removedFromChat` - User removed from a chat by another user
+- `updateGroupName` - Specific event for group name change
+
+## Response Types
+
+### Standard API Response Format
+
+All API responses follow this format:
+
+```json
+{
+  "statusCode": number,
+  "data": any,
+  "message": "string",
+  "success": boolean
+}
+```
+
+### Chat Participant Type
+
+```json
+{
+  "userId": "string",
+  "name": "string",
+  "avatarUrl": "string",
+  "role": "member" | "admin",
+  "joinedAt": "date"
+}
+```
+
+### Message Status Enum
+
+- `0` - SENT
+- `1` - DELIVERED
+- `2` - READ
+- `3` - FAILED
+
+### Chat Types
+
+- `direct` - One-on-one chat between two users
+- `group` - Group chat with multiple participants
+- `channel` - Channel type (reserved for future use)
+
+### Deleted For Entry
+
+```json
+{
+  "userId": "string",
+  "deletedAt": "date"
+}
+```
+
+## Error Handling
+
+### Error Response Format
+
+```json
+{
+  "statusCode": number,
+  "message": "Error description",
+  "success": false,
+  "errors": [] (for validation errors)
+}
+```
+
+### Common HTTP Status Codes
+
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request / Validation Error
+- `401` - Unauthorized (missing or invalid token)
+- `403` - Forbidden (insufficient permissions)
+- `404` - Not Found
+- `429` - Too Many Requests (Rate Limited)
+- `500` - Internal Server Error
+
+### Validation Errors
+
+Validation errors include detailed information about which fields failed validation:
+
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "success": false,
+  "errors": [
+    {
+      "field": "fieldName",
+      "message": "Field-specific error message"
+    }
+  ]
+}
+```
+
+## Rate Limiting
+
+The API implements several layers of rate limiting:
+
+### General Rate Limiting
+
+- **Limit**: 5000 requests per 15 minutes per IP address
+- **Applied to**: All API endpoints
+- **Headers**:
+  - `X-RateLimit-Limit`: Request limit
+  - `X-RateLimit-Remaining`: Remaining requests
+  - `X-RateLimit-Reset`: Time when limit resets
+
+### Specific Rate Limiters
+
+1. **Chat Creation Rate Limiter**
+
+   - Applied to: Chat creation, group management, participant operations
+   - Endpoints: `POST /chats`, `POST /chats/group`, `PATCH /chats/group/:id`, etc.
+
+2. **Message Rate Limiter**
+
+   - Applied to: All message operations
+   - Endpoints: All `/messages/*` endpoints
+
+3. **File Upload Rate Limiter**
+   - Applied to: File upload operations
+   - Endpoints: `POST /messages/:chatId` (with file attachments)
+
+### Rate Limit Response
+
+When rate limit is exceeded:
+
+```json
+{
+  "statusCode": 429,
+  "message": "Too Many Requests",
   "success": false
 }
 ```
 
-### Example Request
+## Health Check
 
-```http
-GET /api/v1/chats
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
+### Ping Endpoint
 
-### WebSocket Authentication
+- **GET** `/api/v1/ping`
+- **Description**: Health check endpoint for monitoring
+- **Authentication**: Not required
 
-WebSocket connections must also include the JWT token in the connection query parameters:
+**Response**:
 
-```javascript
-const socket = io("http://localhost:3000", {
-  query: {
-    token: "your_jwt_token",
-  },
-});
-```
-
-## WebSocket Events
-
-### Connection Events
-
-- `connected`: Emitted when a user connects to the socket
-- `disconnect`: Emitted when a user disconnects
-- `online`: Emitted when a user comes online
-
-### Message Events
-
-- `messageReceived`: Emitted when a new message is received. Emits a `MessageResponseType` object.
-- `messageDeleted`: Emitted when a message is deleted. Emits a `MessageResponseType` object.
-- `messageReaction`: Emitted when a message reaction is updated. Emits a `MessageResponseType` object.
-- `messagePin`: Emitted when a message is pinned/unpinned. Emits a `ChatResponseType` object.
-- `messageEdited`: Emitted when a message is edited. Emits an object with structure:
-  ```typescript
-  {
-    messageId: string;
-    content: string;
-    chatId: string;
-    editedAt: Date;
-  }
-  ```
-- `messageRead`: Emitted when messages are marked as read. Emits an object with structure:
-  ```typescript
-  {
-    chatId: string;
-    readBy: {
-      userId: string;
-      readAt: Date;
-    };
-    messageIds: string[];
-  }
-  ```
-
-### Chat Events
-
-- `newChat`: Emitted when a new chat is created. Emits a `ChatResponseType` object.
-- `chatDeleted`: Emitted when a chat is deleted. Emits a `ChatResponseType` object.
-- `leaveChat`: Emitted when a user leaves a group chat. Emits a `ChatResponseType` object.
-- `updateGroupName`: Emitted when a group chat name is updated. Emits a `ChatResponseType` object.
-- `newParticipantAdded`: Emitted when a new participant is added to a group. Emits a `ChatResponseType` object.
-- `participantLeft`: Emitted when a participant leaves a group. Emits a `ChatResponseType` object.
-
-### Typing Indicators
-
-- `typing`: Emitted when a user starts typing
-- `stopTyping`: Emitted when a user stops typing
-
-### Error Handling
-
-- `socketError`: Emitted when a socket error occurs
-
-## Response Types
-
-The API uses standardized response types to ensure consistency across all endpoints. These types are used in both HTTP responses and WebSocket events.
-
-### MessageResponseType
-
-The `MessageResponseType` represents the structure of a message after it has been processed through the MongoDB aggregation pipeline.
-
-```typescript
-export interface MessageResponseType {
-  _id: string; // String representation of MongoDB ObjectId
-  sender: User; // User who sent the message
-  receivers: User[]; // Array of users who received the message
-  chatId: string; // String representation of chat ObjectId
-  content: string; // Message content
-  attachments: AttachmentType[]; // File attachments
-  status: StatusEnum; // Message status (sent, delivered, read)
-  reactions: ReactionType[]; // User reactions to the message
-  edited: { isEdited: boolean; editedAt: Date }; // Edit status
-  edits: EditType[]; // History of edits
-  readBy: ReadByType[]; // Users who have read the message
-  deletedFor: DeletedForEntry[]; // Users who have deleted the message
-  replyToId: string | null; // Reference to parent message if it's a reply
-  formatting: Record<string, string>; // Message formatting options
-  createdAt: Date; // Creation timestamp
-  updatedAt: Date; // Last update timestamp
+```json
+{
+  "status": "ok",
+  "message": "pong",
+  "timestamp": 1638360000000
 }
 ```
 
-### ChatResponseType
+### Root Endpoint
 
-The `ChatResponseType` represents the structure of a chat after it has been processed through the MongoDB aggregation pipeline.
+- **GET** `/`
+- **Description**: Server status endpoint
+- **Authentication**: Not required
 
-```typescript
-export interface ChatResponseType {
-  _id: string; // String representation of MongoDB ObjectId
-  name: string; // Chat name
-  lastMessage: MessageResponseType | null; // Last message in the chat
-  avatarUrl: string; // Chat avatar URL
-  participants: ChatParticipant[]; // Chat participants
-  admin: string; // Chat admin user ID
-  type: "direct" | "group" | "channel"; // Chat type
-  createdBy: string; // Creator user ID
-  deletedFor: DeletedForEntry[]; // Users who have deleted the chat
-  metadata?: {
-    // Additional metadata
-    pinnedMessages: string[]; // Pinned message IDs
-    customPermissions?: any; // Custom permissions
-  };
-  messages: MessageResponseType[]; // Chat messages
-  createdAt: Date; // Creation timestamp
-  updatedAt: Date; // Last update timestamp
+**Response**:
+
+```json
+{
+  "status": "ok",
+  "message": "Server is running",
+  "timestamp": "2025-06-08T12:00:00.000Z"
 }
 ```
 
-## Data Transformation Logic
+## Additional Notes
+
+### File Uploads
+
+- **Size Limit**: 16KB for JSON payloads
+- **Supported**: File attachments in messages
+- **Storage**: Managed through cloud storage service (Cloudinary)
+
+### Database
+
+- **Type**: MongoDB with Mongoose ODM
+- **Connection**: Auto-retry mechanism with 5 attempts
+- **Aggregation**: Complex aggregation pipelines for chat and message queries
+
+### Security Features
+
+- **CORS**: Configurable allowed origins
+- **Request IP**: IP address tracking for rate limiting
+- **Cookie Parser**: Support for cookie-based authentication
+- **Compression**: Response compression enabled
+- **Morgan Logging**: Request logging in development/production modes
+
+### Environment Configuration
+
+Required environment variables:
+
+- `CLIENT_URL` - Allowed CORS origins
+- `NODE_ENV` - Environment mode (development/production)
+- Database connection string
+- JWT secret keys
+- Cloud storage credentials
 
 ### MongoDB Aggregation Pipelines
 
@@ -798,8 +1279,8 @@ Request:
 
 ```json
 {
-  "content": "Message content"
-  "replyToId":(optional) "Reply to message Id"
+  "content": "Message content",
+  "replyToId": "reply_to_messageId" (optional)
 }
 ```
 
@@ -882,7 +1363,7 @@ Response:
 ```json
 {
   "statusCode": 200,
-  "data": MessageResponseType
+  "data": MessageResponseType,
   "message": "Message edited successfully",
   "success": true
 }
@@ -907,7 +1388,7 @@ Response:
 ```json
 {
   "statusCode": 200,
-  "data": {"modifiedCount": 2}
+  "data": { "modifiedCount": 2 },
   "message": "Messages marked as read",
   "success": true
 }
@@ -935,7 +1416,7 @@ Response:
 #### Unpin Message
 
 ```http
-DELETE /api/v1/messages/:chatId/:messageId/pin
+DELETE /api/v1/chats/:chatId/pin/:messageId
 ```
 
 Response:
@@ -943,7 +1424,7 @@ Response:
 ```json
 {
   "statusCode": 200,
-  "data": "data": {"chatId": "chatId", "messageId": "messageId"},
+  "data": { "chatId": "chatId", "messageId": "messageId" },
   "message": "Message unpinned successfully",
   "success": true
 }

@@ -1,226 +1,255 @@
 # Chat Backend
 
-This is the backend service for the ChatApp application. It handles real-time messaging, user presence, and other core chat functionalities. It is built with Node.js, Express, and integrates with MongoDB (via Mongoose) for chat data storage and PostgreSQL for user data management.
+A production-ready real-time chat backend service built with Node.js, Express, and TypeScript. This service powers comprehensive chat functionality including direct messaging, group chats, file sharing, and real-time communication features. It uses MongoDB for chat data storage and integrates with external user validation services.
 
-User validation, previously handled by an API call to the frontend, is now performed directly within this backend service by querying the PostgreSQL database. This change enhances security and efficiency by centralizing user data access.
+The backend provides RESTful APIs for chat management and WebSocket connections for real-time messaging, typing indicators, user presence, and live notifications.
 
 ## Features
 
-- **Real-time Communication**: WebSocket integration using Socket.IO
-- **Chat Management**: Create, read, update, and delete functionalities for both direct and group chats
-- **Message Handling**: Send, delete, pin, reply to, react to, and edit messages
-- **Read Receipts**: Track which messages have been read by which users
-- **Message Pagination**: Optimized retrieval of large chat histories
-- **File Attachments**: Support for sending and storing file attachments
-- **User Authentication**: JWT-based authentication system
-- **Robust Error Handling**: Standardized error responses with detailed information
-- **Connection Status Monitoring**: Real-time connection health tracking
-- **Scalable Architecture**: Well-structured codebase with MVC pattern
-- **Docker Support**: Containerization for easy deployment
+- **Real-time Communication**: WebSocket integration using Socket.IO for instant messaging
+- **Comprehensive Chat Management**:
+  - Create and manage one-on-one conversations
+  - Group chat creation, member management (add/remove participants)
+  - Chat archival and deletion functionality
+- **Advanced Message Operations**:
+  - Send, edit, delete, and reply to messages
+  - Pin/unpin important messages in chats
+  - React to messages with emojis
+  - Message read receipts and status tracking
+- **File Attachment Support**: Upload and share files with URL-based storage
+- **Real-time Features**:
+  - Live typing indicators
+  - User online/offline presence tracking
+  - Instant message delivery and notifications
+- **Authentication & Security**:
+  - JWT-based authentication system
+  - Rate limiting protection (5000 requests per 15 minutes)
+  - CORS configuration for secure cross-origin requests
+- **Performance & Monitoring**:
+  - Message pagination for efficient data loading
+  - Request logging with Morgan
+  - Response compression for improved performance
+  - Connection health monitoring
+- **Developer Experience**:
+  - Full TypeScript support with strict typing
+  - Comprehensive API documentation
+  - ESLint and Prettier for code quality
+  - Hot-reloading development environment
 
 ## Tech Stack
 
-- **Backend**: Node.js, Express.js
-- **Language**: TypeScript
-- **Database**: MongoDB with Mongoose ORM
-- **Real-time Communication**: Socket.IO
-- **Authentication**: JWT (JSON Web Tokens)
-- **File Handling**: Multer
-- **Containerization**: Docker and Docker Compose
+- **Runtime**: Node.js with Express.js framework
+- **Language**: TypeScript for type-safe development
+- **Database**: MongoDB with Mongoose ODM for chat data storage
+- **Real-time Communication**: Socket.IO for WebSocket connections
+- **Authentication**: JWT (JSON Web Tokens) for secure authentication
+- **File Upload**: Multer for handling multipart/form-data
+- **External Integrations**:
+  - PostgreSQL client (`pg`) for user validation
+  - Axios for HTTP requests to external services
+- **Development Tools**:
+  - ESLint with TypeScript support for code linting
+  - Prettier for code formatting
+  - ts-node-dev for development hot-reloading
+- **Middleware & Utilities**:
+  - CORS for cross-origin resource sharing
+  - Morgan for HTTP request logging
+  - Express Rate Limit for API protection
+  - Compression for response optimization
+  - Cookie Parser for cookie handling
+  - Request IP for client IP detection
 
 ## Prerequisites
 
-- Node.js (v18.x or higher)
-- MongoDB (local or Atlas)
-- npm or yarn package manager
+- **Node.js**: Version 18.x or higher (based on TypeScript definitions)
+- **MongoDB**: Local installation or MongoDB Atlas cloud instance
+- **Package Manager**: npm (comes with Node.js) or yarn
+- **Environment**: Access to external user validation service (PostgreSQL-based)
 
 ## Installation and Setup
 
-1. **Clone the repository**:
+1.  **Clone the repository**:
 
-   ```bash
-   git clone https://github.com/yourusername/chat-backend.git
-   cd chat-backend
-   ```
+    ```bash
+    git clone https://github.com/krotrn/chat-backend.git
+    cd chat-backend
+    ```
 
-2. **Install dependencies**:
+2.  **Install dependencies**:
 
-   ```bash
-   npm install
-   ```
+    ```bash
+    npm install
+    ```
 
-3. **Environment Configuration**:
+3.  **Environment Configuration**:
+    Copy the example environment file and configure your settings:
 
-   ```bash
-   cp .env.example .env
-   ```
+    ```bash
+    cp .env.example .env
+    ```
 
-   Edit the `.env` file with your configuration:
+    Edit the `.env` file with your configuration:
 
-   ```
-   # MongoDB Configuration
-   MONGODB_URI=mongodb://localhost:27017/chat
-   MONGO_USER=yourusername
-   MONGO_PASSWORD=yourpassword
+    ```bash
+    # MongoDB Configuration
+    MONGODB_URI=mongodb://localhost:27017/chat-app
+    MONGO_USER=your_mongo_username
+    MONGO_PASSWORD=your_mongo_password
 
-   # Application Configuration
-   JWT_SECRET=your_jwt_secret_key
-   NODE_ENV=development
-   PORT=3000
+    # Application Configuration
+    JWT_SECRET=your_super_secret_jwt_key
+    NODE_ENV=development
+    PORT=8000
 
-   CLIENT_URL=http://localhost:3000
-   INTERNAL_API_KEY=your_internal_api_key
-   VALIDATION_URL=http://localhost:3000
-   ```
+    # External Service Configuration
+    CLIENT_URL=http://localhost:3000
+    DATABASE_URL=postgres://user:password@localhost:5432/your_database
+    ```
 
-4. **Start development server**:
-   ```bash
-   npm run dev
-   ```
+4.  **Start the development server**:
+
+    ```bash
+    npm run dev
+    ```
+
+    The server will start on `http://localhost:8000` (or your configured PORT) with hot-reloading enabled.
+
+5.  **Verify the setup**:
+    - Visit `http://localhost:8000/api/v1/health` to check if the server is running
+    - Check the console for successful MongoDB connection
+    - Ensure WebSocket connection is available at `ws://localhost:8000`
 
 ## Scripts
 
-- `npm run dev`: Start development server with hot-reloading
-- `npm run build`: Build the TypeScript project
-- `npm run stage`: Build and stage changes for commit
-- `npm run lint`: Run ESLint
-- `npm run lint:fix`: Fix ESLint issues
-- `npm run format`: Format code with Prettier
-- `npm run format:check`: Check formatting with Prettier
-- `npm run validate`: Run linting and format checking
+- `npm run dev`: Start development server with hot-reloading using `ts-node-dev`.
+- `npm run build`: Compile TypeScript to JavaScript.
+- `npm run stage`: Compile TypeScript and stage all changes for commit (`tsc && git add .`).
+- `npm run lint`: Lint TypeScript files using ESLint.
+- `npm run lint:fix`: Automatically fix ESLint issues.
+- `npm run format`: Format code with Prettier.
+- `npm run format:check`: Check formatting with Prettier without making changes.
+- `npm run validate`: Run both linting and format checking.
 
 ## API Endpoints
 
-The API is organized around REST. All requests and responses use JSON.
+The chat backend provides a comprehensive RESTful API organized around REST principles. All requests and responses use JSON format and follow standardized response structures.
+
+### Base URL
+
+```
+http://localhost:8000/api/v1
+```
 
 ### Authentication
 
-All API requests require authentication via JWT token:
+Most API requests require authentication via a JWT token in the `Authorization` header:
 
 ```
 Authorization: Bearer <your_jwt_token>
 ```
 
-### Chat Routes
+### API Categories
 
-- **GET /api/v1/chats**: Get all chats for the authenticated user
-- **POST /api/v1/chats**: Create or get a one-on-one chat
-- **GET /api/v1/chats/chat/:chatId**: Get chat by ID
-- **DELETE /api/v1/chats/chat/:chatId**: Delete one-on-one chat
-- **DELETE /api/v1/chats/chat/:chatId/me**: Delete chat for the current user
+- **Chat Management** (`/chats/*`): 14 endpoints for creating, managing, and deleting conversations
+- **Message Operations** (`/messages/*`): 7 endpoints for sending, editing, and managing messages
+- **Webhook Integration** (`/webhooks/*`): 3 endpoints for external service integration
+- **Health Check** (`/health`): Server status monitoring
 
-### Group Chat Routes
+### Quick Reference
 
-- **POST /api/v1/chats/group**: Create a group chat
-- **GET /api/v1/chats/group/:chatId**: Get group chat details
-- **PATCH /api/v1/chats/group/:chatId**: Rename a group chat
-- **DELETE /api/v1/chats/group/:chatId**: Delete a group chat
-- **POST /api/v1/chats/group/:chatId/participants**: Add participant to group
-- **DELETE /api/v1/chats/group/:chatId/participants/:userId**: Remove participant from group
-- **DELETE /api/v1/chats/group/:chatId/leave**: Leave a group chat
+**Popular Endpoints:**
 
-### Message Routes
+- `POST /chats` - Create a new chat (one-on-one or group)
+- `GET /chats` - Get all user's chats with pagination
+- `POST /messages` - Send a message to a chat
+- `GET /messages/:chatId` - Get messages from a specific chat
+- `POST /chats/:chatId/pin/:messageId` - Pin a message in a chat
+- `GET /health` - Check server health status
 
-- **GET /api/v1/messages/:chatId**: Get all messages in a chat (with pagination)
-- **POST /api/v1/messages/:chatId**: Send a message
-- **DELETE /api/v1/messages/:chatId/:messageId**: Delete a message
-- **POST /api/v1/messages/:chatId/reply**: Reply to a message
-- **PATCH /api/v1/messages/:chatId/:messageId/reaction**: Update message reaction
-- **PATCH /api/v1/messages/:chatId/:messageId/edit**: Edit a message
-- **POST /api/v1/messages/:chatId/read**: Mark messages as read
-
-### Message Pin Routes
-
-- **POST /api/v1/messages/:chatId/:messageId/pin**: Pin a message
-- **DELETE /api/v1/messages/:chatId/:messageId/pin**: Unpin a message
-
-For detailed API documentation, see [API_DOC.md](API_DOC.md).
+📖 **For complete API documentation with request/response examples, authentication details, and WebSocket events, see [API_DOC.md](./API_DOC.md)**
 
 ## WebSocket Events
 
-The application uses Socket.IO for real-time communication:
+The application uses Socket.IO for real-time communication. The backend supports **25+ WebSocket events** across different categories:
 
-### Connection Events
+### Event Categories
 
-- `connected`: User connects to the server
-- `disconnect`: User disconnects
-- `online`: User comes online
+- **🔗 Connection & Presence** (8 events): User online/offline status, connection management
+- **💬 Chat Room Management** (4 events): Joining/leaving chats, participant updates
+- **📨 Messaging & Interactions** (9 events): Real-time messaging, typing indicators, reactions
+- **⚙️ Chat Metadata** (5 events): Chat creation, updates, deletions
 
-### Message Events
+### Key Real-time Features
 
-- `messageReceived`: New message received
-- `messageDeleted`: Message deleted
-- `messageReaction`: Message reaction updated
-- `messagePin`: Message pinned/unpinned
-- `messageEdited`: Message edited
-- `messageRead`: Messages marked as read
+- **Live Messaging**: Instant message delivery with `messageReceived` event
+- **Typing Indicators**: Real-time typing status with `typing`/`stopTyping` events
+- **User Presence**: Online/offline status tracking with `userOnline`/`userOffline` events
+- **Message Interactions**: Live reactions, pins, edits, and deletions
+- **Group Management**: Real-time participant additions/removals
 
-### Chat Events
+### Example Events
 
-- `newChat`: New chat created
-- `chatDeleted`: Chat deleted
-- `leaveChat`: User leaves a group chat
-- `updateGroupName`: Group chat name updated
-- `newParticipantAdded`: New participant added to group
-- `participantLeft`: Participant removed from group
+```javascript
+// Client connects and joins a chat
+socket.emit("joinChat", { chatId: "chat123" });
 
-### Typing Indicators
+// Send typing indicator
+socket.emit("typing", { chatId: "chat123", userId: "user456" });
 
-- `typing`: User starts typing
-- `stopTyping`: User stops typing
+// Receive new message
+socket.on("messageReceived", (messageData) => {
+  // Handle incoming message
+});
 
-## Docker Deployment
+// Track user presence
+socket.on("userIsOnline", ({ userId }) => {
+  // Update user status to online
+});
+```
 
-The project includes Docker and Docker Compose configurations for easy deployment:
-
-1. **Build and run with Docker Compose**:
-
-   ```bash
-   docker-compose up -d
-   ```
-
-2. **To stop the containers**:
-   ```bash
-   docker-compose down
-   ```
-
-The Docker Compose setup includes:
-
-- The Node.js application container
-- A MongoDB container with persistent storage
-- Health check configuration
+📖 **For the complete list of WebSocket events with payload structures and usage examples, see [API_DOC.md](./API_DOC.md#websocket-events)**
 
 ## Project Structure
 
 ```
 chat-backend/
 ├── src/
-│   ├── controllers/     # Request handlers
-│   ├── database/        # Database connection
-│   ├── middleware/      # Custom middleware
-│   ├── models/          # Mongoose schemas
-│   ├── routes/          # API routes
-│   ├── socket/          # Socket.IO implementation
-│   ├── types/           # TypeScript types
-│   ├── utils/           # Utility functions
-│   └── index.ts         # Application entry point
-├── public/              # Public assets
-├── dist/                # Compiled JavaScript
-├── .env.example         # Example environment variables
-├── .gitignore           # Git ignore file
-├── docker-compose.yml   # Docker Compose configuration
-├── Dockerfile           # Docker configuration
-├── package.json         # Dependencies and scripts
-├── tsconfig.json        # TypeScript configuration
-├── API_DOC.md           # Detailed API documentation
-└── README.md            # Project documentation
+│   ├── controllers/     # Request handlers and business logic
+│   │   ├── chat/        # Chat management controllers (general, group, one-on-one, pin)
+│   │   └── message/     # Message operation controllers
+│   ├── database/        # Database connection setup (MongoDB)
+│   ├── middleware/      # Express middleware (auth, error handling, validation)
+│   ├── models/          # Mongoose schemas and models for MongoDB
+│   ├── routes/          # API route definitions (chat, message, webhooks)
+│   ├── socket/          # Socket.IO event handlers and real-time logic
+│   ├── types/           # TypeScript type definitions and interfaces
+│   ├── utils/           # Utility functions, constants, and helper modules
+│   └── index.ts         # Application entry point and server configuration
+├── public/              # Static assets directory
+├── .env.example         # Environment variables template
+├── .gitignore           # Git ignore configuration
+├── eslint.config.mjs    # ESLint configuration
+├── LICENSE              # MIT License file
+├── package.json         # Dependencies, scripts, and project metadata
+├── tsconfig.json        # TypeScript compiler configuration
+├── API_DOC.md           # Comprehensive API documentation
+└── README.md            # Project documentation (this file)
 ```
+
+### Key Directories
+
+- **`src/controllers/`**: Contains organized business logic split by feature (chat management, message operations)
+- **`src/routes/`**: Express route definitions with proper middleware integration
+- **`src/socket/`**: Real-time WebSocket event handling for instant communication
+- **`src/models/`**: MongoDB schemas using Mongoose for data modeling
+- **`src/types/`**: TypeScript interfaces ensuring type safety across the application
+- **`src/utils/`**: Shared utilities, constants, and helper functions
 
 ## Response Types
 
-The API uses standardized response types:
+The API aims to use standardized response structures.
 
-### Success Response
+### Success Response Example
 
 ```json
 {
@@ -228,12 +257,12 @@ The API uses standardized response types:
   "data": {
     /* Response data */
   },
-  "message": "Success message",
+  "message": "Operation successful",
   "success": true
 }
 ```
 
-### Error Response
+### Error Response Example
 
 ```json
 {
@@ -241,35 +270,44 @@ The API uses standardized response types:
   "data": null,
   "message": "Resource not found",
   "success": false,
-  "errors": []
+  "errors": [
+    /* Optional: array of specific error details */
+  ]
 }
 ```
 
-## Recent Enhancements
-
-- **Message Editing**: Added ability to edit sent messages with history tracking
-- **Read Receipts**: Track which users have read messages in a chat
-- **Optimized Message Retrieval**: Implemented pagination for better performance with large chat histories
-- **Rich Text Support**: Added basic formatting support for messages
-- **Enhanced Error Handling**: Improved error reporting with standardized response structure
-- **Connection Monitoring**: Added built-in connection health tracking
-- **Optimistic UI Updates**: Frontend implementation now uses optimistic updates to improve UX
-- **Race Condition Prevention**: Fixed potential race conditions in read receipt handling
-
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+We welcome contributions to improve the chat backend! Please follow these steps:
+
+1. **Fork the repository** on GitHub
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Follow the coding standards**:
+   - Run `npm run validate` to check linting and formatting
+   - Ensure TypeScript compilation passes: `npm run build`
+   - Write meaningful commit messages
+4. **Commit your changes**: `git commit -m 'Add some amazing feature'`
+5. **Push to your branch**: `git push origin feature/amazing-feature`
+6. **Open a Pull Request** with a clear description of the changes
+
+### Development Guidelines
+
+- Maintain TypeScript strict mode compliance
+- Follow existing code organization patterns
+- Add appropriate error handling and logging
+- Update API documentation for new endpoints
+- Test WebSocket events thoroughly
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the **MIT License** - see the [LICENSE](./LICENSE) file for details.
+
+## Contact & Support
+
+- **Issues**: [GitHub Issues](https://github.com/krotrn/chat-backend/issues)
+- **Documentation**: See [API_DOC.md](./API_DOC.md) for detailed API reference
+- **Questions**: Open a discussion or issue on the GitHub repository
 
 ---
 
-## Contact
-
-For any questions or suggestions, please open an issue on GitHub.
+**Built with ❤️ using Node.js, TypeScript, and Socket.IO**
