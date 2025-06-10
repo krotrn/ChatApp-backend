@@ -93,8 +93,6 @@ The backend provides RESTful APIs for chat management and WebSocket connections 
     ```bash
     # MongoDB Configuration
     MONGODB_URI=mongodb://localhost:27017/chat-app
-    MONGO_USER=your_mongo_username
-    MONGO_PASSWORD=your_mongo_password
 
     # Application Configuration
     JWT_SECRET=your_super_secret_jwt_key
@@ -104,6 +102,7 @@ The backend provides RESTful APIs for chat management and WebSocket connections 
     # External Service Configuration
     CLIENT_URL=http://localhost:3000
     DATABASE_URL=postgres://user:password@localhost:5432/your_database
+    SESSIONS_SECRET=your_sessions_secret_key
     ```
 
 4.  **Start the development server**:

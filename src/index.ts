@@ -9,6 +9,7 @@ import lusca from "lusca";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import compression from "compression";
+import session from "express-session";
 
 dotenv.config();
 
@@ -19,6 +20,11 @@ app.use(compression());
 
 const morganFormat = process.env.NODE_ENV === "production" ? "combined" : "dev";
 app.use(morgan(morganFormat));
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  console.error("SESSION_SECRET is not set in environment variables");
+  process.exit(1);
+}
 
 const CLIENT_URL = process.env.CLIENT_URL || "*";
 const allowedOrigins =
@@ -69,6 +75,20 @@ app.use(
   }),
 );
 app.use(cookieParser());
+
+app.use(
+  session({
+    secret: sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+    },
+  }),
+);
+
 app.use(lusca.csrf());
 
 app.get("/api/v1/ping", (req, res) => {
