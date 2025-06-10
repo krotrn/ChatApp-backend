@@ -5,6 +5,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import requestIp from "request-ip";
 import cookieParser from "cookie-parser";
+import lusca from "lusca";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import compression from "compression";
@@ -68,6 +69,7 @@ app.use(
   }),
 );
 app.use(cookieParser());
+app.use(lusca.csrf());
 
 app.get("/api/v1/ping", (req, res) => {
   res.status(200).json({
