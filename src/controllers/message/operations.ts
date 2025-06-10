@@ -170,8 +170,11 @@ export const sendMessage = async (
     };
 
     if (replyToId) {
+      if (!replyToId || !Types.ObjectId.isValid(replyToId)) {
+        throw new ApiError(400, "Invalid replyToId");
+      }
       const originalMessage: MessageType | null =
-        await ChatMessage.findById(replyToId);
+        await ChatMessage.findOne({ _id: { $eq: new Types.ObjectId(replyToId) } });
       if (!originalMessage) {
         throw new ApiError(404, "Referenced message does not exist");
       }
