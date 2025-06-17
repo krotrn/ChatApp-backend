@@ -14,7 +14,7 @@ import type {
   ChatResponseType,
   ChatType,
 } from "../../types/chat";
-import { MessageType } from "src/types/message";
+import { MessageType } from "../../types/message";
 
 // Delete Cascade Chat Messages - Helper function
 export const deleteCascadeChatMessages = async (

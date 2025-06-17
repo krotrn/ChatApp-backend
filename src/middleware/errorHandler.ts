@@ -1,5 +1,4 @@
 import type { ErrorRequestHandler } from "express";
-import { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
 import mongoose from "mongoose";
 import { MulterError } from "multer";
 
@@ -22,24 +21,6 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
       success: false,
       message: err.message,
       errors: err.errors,
-    });
-    return;
-  }
-
-  if (err instanceof TokenExpiredError) {
-    res.status(401).json({
-      success: false,
-      message: "Your session has expired, please login again",
-      error: "token_expired",
-    });
-    return;
-  }
-
-  if (err instanceof JsonWebTokenError) {
-    res.status(401).json({
-      success: false,
-      message: "Invalid authentication token",
-      error: err.message,
     });
     return;
   }

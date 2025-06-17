@@ -1,9 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
 import ApiError from "../utils/ApiError";
-import { JwtPayload } from "src/types/custom";
+import { verifyJWT } from "../utils/jwt";
 
-export const authenticate = (
+export const authenticate = async (
   req: Request,
   res: Response,
   next: NextFunction,
@@ -20,17 +19,14 @@ export const authenticate = (
       throw new ApiError(500, "JWT_SECRET is not defined.");
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
+    const decoded = await verifyJWT(token);
+    if (!decoded) {
+      throw new ApiError(401, "Invalid token.");
+    }
     req.user = decoded;
     next();
   } catch (error) {
     console.error("Auth error:", error);
-    if (error instanceof jwt.JsonWebTokenError) {
-      next(new ApiError(401, "Invalid token"));
-    } else if (error instanceof jwt.TokenExpiredError) {
-      next(new ApiError(401, "Token expired"));
-    } else {
-      next(error);
-    }
+    next(error);
   }
 };

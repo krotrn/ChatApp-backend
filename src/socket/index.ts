@@ -62,6 +62,7 @@ const emitSocketEvent = <T>(
     if (!io) {
       throw new Error("Socket.io instance not found");
     }
+    console.log(`Emitting event "${event}" to room "${roomId}":`);
     io.to(roomId).emit(event, payload);
   } catch (error) {
     console.error("Error emitting socket event:", error);

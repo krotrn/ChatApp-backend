@@ -1,6 +1,6 @@
 import ApiError from "./ApiError";
 import type { ChatParticipant } from "../types/chat";
-import { AttachmentType } from "src/types/message";
+import { AttachmentType } from "../types/message";
 export const validateMessageContent = (content: string): boolean => {
   if (!content || typeof content !== "string") {
     return false;
