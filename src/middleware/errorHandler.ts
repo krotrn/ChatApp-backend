@@ -1,6 +1,5 @@
 import type { ErrorRequestHandler } from "express";
 import mongoose from "mongoose";
-import { MulterError } from "multer";
 
 import ApiError from "../utils/ApiError";
 
@@ -41,15 +40,6 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     res.status(400).json({
       success: false,
       message: "Invalid ID format",
-      error: err.message,
-    });
-    return;
-  }
-
-  if (err instanceof MulterError) {
-    res.status(400).json({
-      success: false,
-      message: "File Upload Error",
       error: err.message,
     });
     return;
