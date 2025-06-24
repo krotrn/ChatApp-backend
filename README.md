@@ -65,8 +65,69 @@ The backend provides RESTful APIs for chat management and WebSocket connections 
 - **MongoDB**: Local installation or MongoDB Atlas cloud instance
 - **Package Manager**: npm (comes with Node.js) or yarn
 - **Environment**: Access to external user validation service (PostgreSQL-based)
+- **Docker** (Optional): For containerized development and deployment
 
 ## Installation and Setup
+
+### Option 1: Docker Setup (Recommended)
+
+1.  **Clone the repository**:
+
+    ```bash
+    git clone https://github.com/krotrn/chat-backend.git
+    cd chat-backend
+    ```
+
+2.  **Environment Configuration**:
+    Copy the example environment file and configure your settings:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Edit the `.env` file with your configuration:
+
+    ```bash
+    # MongoDB Configuration (Docker will handle this)
+    MONGODB_URI=mongodb://mongodb:27017/chat-app
+
+    # Application Configuration
+    JWT_SECRET=your_super_secret_jwt_key
+    NODE_ENV=development
+    PORT=8000
+
+    # External Service Configuration
+    CLIENT_URL=http://localhost:3000
+    DATABASE_URL=your_external_postgres_connection_string
+    SESSION_SECRET=your_sessions_secret_key
+    ```
+
+3.  **Start with Docker**:
+
+    ```bash
+    # Start development environment with all services
+    npm run docker:dev
+
+    # Or start in detached mode (background)
+    npm run docker:dev:detached
+
+    # View logs
+    npm run docker:logs
+
+    # Stop services
+    npm run docker:stop
+    ```
+
+    This will start:
+
+    - Chat Backend on `http://localhost:8000`
+    - MongoDB on `localhost:27017`
+
+4.  **Verify the setup**:
+    - Visit `http://localhost:8000/api/v1/health` to check if the server is running
+    - All databases are automatically configured and connected
+
+### Option 2: Local Development Setup
 
 1.  **Clone the repository**:
 
@@ -102,7 +163,7 @@ The backend provides RESTful APIs for chat management and WebSocket connections 
     # External Service Configuration
     CLIENT_URL=http://localhost:3000
     DATABASE_URL=postgres://user:password@localhost:5432/your_database
-    SESSIONS_SECRET=your_sessions_secret_key
+    SESSION_SECRET=your_sessions_secret_key
     ```
 
 4.  **Start the development server**:
@@ -120,14 +181,45 @@ The backend provides RESTful APIs for chat management and WebSocket connections 
 
 ## Scripts
 
+### Development Scripts
+
 - `npm run dev`: Start development server with hot-reloading using `ts-node-dev`.
 - `npm run build`: Compile TypeScript to JavaScript.
 - `npm run stage`: Compile TypeScript and stage all changes for commit (`tsc && git add .`).
+
+### Code Quality Scripts
+
 - `npm run lint`: Lint TypeScript files using ESLint.
 - `npm run lint:fix`: Automatically fix ESLint issues.
 - `npm run format`: Format code with Prettier.
 - `npm run format:check`: Check formatting with Prettier without making changes.
 - `npm run validate`: Run both linting and format checking.
+
+### Docker Scripts
+
+- `npm run docker:dev`: Start development environment with Docker Compose.
+- `npm run docker:dev:detached`: Start development environment in background.
+- `npm run docker:prod`: Start production environment with Docker Compose.
+- `npm run docker:stop`: Stop all Docker services.
+- `npm run docker:clean`: Stop services and remove volumes (⚠️ Data loss!).
+- `npm run docker:logs`: View backend service logs.
+- `npm run docker:shell`: Open shell in backend container.
+
+### Docker Helper Script (Linux/macOS)
+
+For more advanced Docker operations, use the included helper script:
+
+```bash
+# Make script executable
+chmod +x docker.sh
+
+# Available commands
+./docker.sh help                 # Show all available commands
+./docker.sh dev:start            # Start development environment
+./docker.sh dev:logs             # View logs
+./docker.sh db:backup            # Create database backup
+./docker.sh health               # Check service health
+```
 
 ## API Endpoints
 
@@ -207,6 +299,86 @@ socket.on("userIsOnline", ({ userId }) => {
 ```
 
 📖 **For the complete list of WebSocket events with payload structures and usage examples, see [API_DOC.md](./API_DOC.md#websocket-events)**
+
+## Docker Configuration
+
+The project includes a comprehensive Docker setup for both development and production environments.
+
+### Services Included
+
+- **Chat Backend**: Main application server
+- **MongoDB**: Primary database for chat data
+
+### Development Environment
+
+```bash
+# Start all services for development
+npm run docker:dev
+
+# Start in background
+npm run docker:dev:detached
+
+# View logs
+npm run docker:logs
+
+# Open shell in backend container
+npm run docker:shell
+```
+
+**Development Features:**
+
+- Hot reloading with volume mounts
+- Debug mode enabled for Socket.IO
+- All source code changes reflect immediately
+- Exposed ports: Backend (8000), MongoDB (27017)
+
+### Production Environment
+
+```bash
+# Build and start production services
+npm run docker:prod
+
+# View production logs
+docker-compose logs -f chat-backend-prod
+```
+
+**Production Features:**
+
+- Multi-stage build for optimized images
+- Non-root user for security
+- Health checks included
+- Minimal attack surface
+- Production-optimized Node.js runtime
+
+### Docker Commands Reference
+
+| Command                | Description                    |
+| ---------------------- | ------------------------------ |
+| `npm run docker:dev`   | Start development environment  |
+| `npm run docker:prod`  | Start production environment   |
+| `npm run docker:stop`  | Stop all services              |
+| `npm run docker:clean` | Remove all volumes and cleanup |
+| `npm run docker:logs`  | View backend logs              |
+| `npm run docker:shell` | Access backend container shell |
+
+### Environment Variables for Docker
+
+When using Docker, update your `.env` file with these Docker-optimized settings:
+
+```bash
+# Database connections use Docker service names
+MONGODB_URI=mongodb://mongodb:27017/chat-app
+
+# External database connection (not containerized)
+DATABASE_URL=your_external_postgres_connection_string
+
+# Keep other settings as needed
+JWT_SECRET=your_super_secret_jwt_key
+NODE_ENV=development
+PORT=8000
+CLIENT_URL=http://localhost:3000
+SESSION_SECRET=your_sessions_secret_key
+```
 
 ## Project Structure
 

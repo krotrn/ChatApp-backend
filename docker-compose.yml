@@ -1,0 +1,70 @@
+services:
+  # Chat Backend Service
+  chat-backend:
+    build:
+      context: .
+      target: development
+    container_name: chat-backend-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+      - MONGODB_URI=mongodb://mongodb:27017/chat-app
+      - CLIENT_URL=http://localhost:3000
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+    networks:
+      - chat-network
+    restart: unless-stopped
+    command: npm run dev
+  # MongoDB Service
+  mongodb:
+    image: mongo:7-jammy
+    container_name: chat-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=chat-app
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - chat-network
+    restart: unless-stopped
+  # Production services
+  chat-backend-prod:
+    build:
+      context: .
+      target: production
+    container_name: chat-backend-prod
+    ports:
+      - "8001:8000"
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - MONGODB_URI=mongodb://mongodb:27017/chat-app
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+    networks:
+      - chat-network
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  chat-network:
+    driver: bridge

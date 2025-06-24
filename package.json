@@ -2,16 +2,25 @@
   "name": "chat-backend",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "start": "node dist/index.js",
     "stage": "tsc && git add .",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
-    "validate": "npm run lint && npm run format:check"
+    "validate": "npm run lint && npm run format:check",
+    "docker:dev": "docker-compose up --build",
+    "docker:dev:detached": "docker-compose up -d --build",
+    "docker:prod": "docker-compose --profile production up -d --build",
+    "docker:stop": "docker-compose down",
+    "docker:clean": "docker-compose down -v && docker system prune -f",
+    "docker:logs": "docker-compose logs -f chat-backend",
+    "docker:shell": "docker-compose exec chat-backend sh"
   },
   "keywords": [],
   "author": "",
@@ -60,7 +69,7 @@
     "prettier": "^3.5.1",
     "prisma": "^6.8.2",
     "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.8.3"
   }
 }
